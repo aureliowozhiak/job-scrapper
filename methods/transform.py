@@ -9,42 +9,44 @@ class Transform:
 
     def getJobs(self, site_source, soup):
         match site_source:
-            case "remotar":
-                return self.handleRemotar(soup)
+            case "weworkremotely":
+                return self.handleWeWorkRemotely(soup)
             case _:
                 return "not found"
 
-    def handleRemotar(self, soup):
-        vagas = soup.find_all("div", class_="css-v05qs0")
+    def handleWeWorkRemotely(self, soup):
+        jobs = []
 
-        lista_vagas = []
+        # Seleciona todas as vagas na página
+        for job in soup.select('.new-listing-container'):
+            title_tag = job.select_one('.new-listing__header__title')
+            company_tag = job.select_one('.new-listing__company-name')
+            location_tag = job.select_one('.new-listing__company-headquarters')
+            salary_tag = job.select('.new-listing__categories__category')
 
-        for vaga in vagas:
-            try:
-                titulo = vaga.find("p", class_="h1").text.strip()
-                link_vaga = vaga.find("a", href=True)["href"]
-                empresa = vaga.find("p", class_="company").text.strip()
-                empresa_link = vaga.find("a", href=True, rel="noopener noreferrer")["href"]
-                publicacao = vaga.find("p", class_="created-at").text.strip()
-                tipo_trabalho = vaga.find("div", class_="css-8xyatz").text.strip()
-                salario = vaga.find("div", class_="info-salary-box").text.strip()
-                imagem_empresa = vaga.find("img")["src"]
 
-                lista_vagas.append({
-                    "Título": titulo,
-                    "Link da Vaga": f"https://remotar.com{link_vaga}",
-                    "Empresa": empresa,
-                    "Link da Empresa": f"https://remotar.com{empresa_link}",
-                    "Publicado em": publicacao,
-                    "Tipo de Trabalho": tipo_trabalho,
-                    "Salário": salario,
-                    "Imagem da Empresa": imagem_empresa
-                })
-
-                return lista_vagas
-            except AttributeError:
-                continue  # Se faltar algum campo, ignora e segue para a próxima
-
+            # Pegando os textos e removendo espaços extras
+            title = title_tag.text.strip() if title_tag else 'N/A'
+            company = company_tag.text.strip() if company_tag else 'N/A'
+            location = location_tag.text.strip() if location_tag else 'N/A'
             
-            
+            # Pegando o salário se disponível
+            salary = 'N/A'
+            if salary_tag and len(salary_tag) > 1:
+                salary = salary_tag[1].text.strip()
+
+            links = [f"{'https://weworkremotely.com'}{a['href']}" for a in job.find_all('a', href=True)]
+
+            # Criando dicionário com as informações
+            jobs.append({
+                'title': title,
+                'company': company,
+                'location': location,
+                'salary': salary,
+                'link': links
+            })
+
+        return jobs
+
+
         
