@@ -11,6 +11,8 @@ class Transform:
         match site_source:
             case "weworkremotely":
                 return self.handleWeWorkRemotely(soup)
+            case "skipthedrive":
+                return self.handleSkipTheDrive(soup)
             case _:
                 return "not found"
 
