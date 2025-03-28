@@ -48,5 +48,20 @@ class Transform:
 
         return jobs
 
-
+    def handleSkipTheDrive(self, soup):
+        job_posts = []
+    
+        for article in soup.select("article.post"):
+            title_element = article.select_one("h2.post-title a")
+            company_element = article.select_one(".custom_fields_company_name_display_search_results")
+            date_element = article.select_one("time.post-date")
+            
+            if title_element and company_element and date_element:
+                job_posts.append({
+                    "title": title_element.text.strip(),
+                    "link": title_element["href"],
+                    "company": company_element.text.strip(),
+                    "date_posted": date_element["datetime"]
+                })
         
+        return job_posts
