@@ -53,8 +53,8 @@ queries = [
     "data product manager"
 ]
 
-#for query in queries:
-#    extract.extractData(query=query)
+for query in queries:
+    extract.extractData(query=query)
 
 transform = Transform()
 
