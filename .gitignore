@@ -1,5 +1,8 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+__pycache__/*.pyc
+__pycache__/*.pyo
+__pycache__/*.pyd
 *.py[cod]
 *$py.class
 
@@ -68,3 +71,6 @@ dmypy.json
 
 # VS Code
 .vscode/
+
+lake/*.html
+!lake/.gitkeep
