@@ -72,5 +72,4 @@ dmypy.json
 # VS Code
 .vscode/
 
-lake/*.html
-!lake/.gitkeep
+lake/**/*.html
