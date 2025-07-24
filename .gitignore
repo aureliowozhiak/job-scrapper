@@ -74,3 +74,5 @@ dmypy.json
 
 lake/**/*.html
 output/**/*.json
+
+spider_output/
