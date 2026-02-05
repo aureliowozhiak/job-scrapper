@@ -2,12 +2,12 @@ import sqlite3
 import threading
 from datetime import datetime
 from flask import Flask, request, jsonify, redirect
+from workflow import pulse
 
 app = Flask(__name__)
 
-# Estado global para rastrear operações em andamento
-scraper_status = {"running": False, "last_run": None, "message": "", "success": None}
-loader_status = {"running": False, "last_run": None, "message": "", "success": None}
+# --- JOB LOGIC WRAPPERS ---
+# Estas funções encapsulam a lógica de execução para o Pulse
 
 
 def search(word):
@@ -45,78 +45,37 @@ def get_stats():
         return {"total_jobs": 0, "total_companies": 0}
 
 
-def run_scraper():
-    """Executa o scraper em background."""
-    global scraper_status
-    scraper_status["running"] = True
-    scraper_status["message"] = "Buscando vagas nos sites..."
+def task_scraper():
+    """Executa o script de scraping (app.py)."""
+    # Importa e executa o app.py
+    import sys
     
-    try:
-        # Importa e executa o app.py
-        import importlib
-        import sys
-        
-        # Recarrega o módulo app se já foi importado
-        if 'app_scraper' in sys.modules:
-            del sys.modules['app_scraper']
-        
-        # Executa o script de scraping
-        exec(open("app.py").read())
-        
-        scraper_status["success"] = True
-        scraper_status["message"] = "Scraping concluído com sucesso!"
-    except Exception as e:
-        scraper_status["success"] = False
-        scraper_status["message"] = f"Erro no scraping: {str(e)}"
-    finally:
-        scraper_status["running"] = False
-        scraper_status["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def run_loader():
-    """Executa o loader em background."""
-    global loader_status
-    loader_status["running"] = True
-    loader_status["message"] = "Carregando vagas no banco de dados..."
+    # Recarrega o módulo app se já foi importado para garantir frescor
+    if 'app_scraper' in sys.modules:
+        del sys.modules['app_scraper']
     
-    try:
-        # Executa o script de loading
-        exec(open("load.py").read())
-        
-        loader_status["success"] = True
-        loader_status["message"] = "Loading concluído com sucesso!"
-    except Exception as e:
-        loader_status["success"] = False
-        loader_status["message"] = f"Erro no loading: {str(e)}"
-    finally:
-        loader_status["running"] = False
-        loader_status["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Executa o script de scraping
+    # O script usa logger próprio, que vai para stdout/file
+    exec(open("app.py").read())
 
 
-# Estado para validação
-validator_status = {"running": False, "last_run": None, "message": "", "stats": None}
+def task_loader():
+    """Executa o script de loading (load.py)."""
+    # Executa o script de loading
+    exec(open("load.py").read())
 
 
-def run_validator():
-    """Executa validação de links em background."""
-    validator_status["running"] = True
-    validator_status["message"] = "Validando links de vagas..."
-    validator_status["stats"] = None
-    
-    try:
-        from validate import cleanup_invalid_jobs
-        stats = cleanup_invalid_jobs(batch_size=50)
-        
-        validator_status["stats"] = stats
-        validator_status["message"] = f"Validação concluída: {stats['removed']} vagas removidas"
-    except Exception as e:
-        validator_status["message"] = f"Erro na validação: {str(e)}"
-    finally:
-        validator_status["running"] = False
-        validator_status["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def task_validator():
+    """Executa a validação de qualidade."""
+    from validate import cleanup_invalid_jobs
+    stats = cleanup_invalid_jobs(batch_size=50)
+    # Podemos retornar stats se quisermos usar no futuro,
+    # mas o Pulse captura apenas sucesso/erro por enquanto
+    if stats['removed'] > 0:
+        print(f"Validator removed {stats['removed']} invalid jobs")
 
 
-@app.route("/positions")
+# --- API ENDPOINTS ---
 def positions():
     """Endpoint API para buscar vagas."""
     word = request.args.get("word", "")
@@ -150,57 +109,36 @@ def api_load():
 
 @app.route("/api/update", methods=["POST"])
 def api_update():
-    """Endpoint para executar scraping + loading + validation."""
-    if scraper_status["running"] or loader_status["running"] or validator_status["running"]:
-        return jsonify({"error": "Uma operação já está em andamento"}), 409
-    
-    def run_full_pipeline():
-        """Pipeline completo: scrape -> load -> validate."""
-        run_scraper()
-        if scraper_status["success"]:
-            run_loader()
-            if loader_status.get("success", False):
-                # Pós-validação automática (limpa jobs obsoletos)
-                run_validator()
-    
-    thread = threading.Thread(target=run_full_pipeline)
-    thread.start()
-    return jsonify({"message": "Pipeline completo iniciado (scrape + load + validate)"})
-
-
-# Alias para compatibilidade com código existente
-def run_etl_process():
-    """Executa pipeline completo ETL + validação."""
-    run_scraper()
-    if scraper_status["success"]:
-        run_loader()
-        if loader_status.get("success", False):
-            run_validator()
-
+    """Endpoint para executar pipeline completo (Scrape -> Load -> Validate)."""
+    try:
+        pipeline_steps = [
+            ('scraper', task_scraper),
+            ('loader', task_loader),
+            ('validator', task_validator)
+        ]
+        pulse.run_pipeline(pipeline_steps)
+        return jsonify({"message": "Pipeline completo iniciado (Scrape -> Load -> Validate)"})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 409
 
 
 @app.route("/api/validate", methods=["POST"])
 def api_validate():
     """Endpoint para validar links de vagas."""
-    if validator_status["running"]:
-        return jsonify({"error": "Validação já está em andamento"}), 409
-    
-    thread = threading.Thread(target=run_validator)
-    thread.start()
-    return jsonify({"message": "Validação de links iniciada"})
-
+    try:
+        pulse.run_job("validator", task_validator)
+        return jsonify({"message": "Validação de links iniciada"})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 409
 
 
 @app.route("/api/status")
 def api_status():
-    """Retorna o status das operações."""
-    stats = get_stats()
-    return jsonify({
-        "scraper": scraper_status,
-        "loader": loader_status,
-        "validator": validator_status,
-        "database": stats
-    })
+    """Retorna o status unificado do Pulse."""
+    # Obtém status do Pulse e combina com status do DB
+    status = pulse.get_status()
+    status["database"] = get_stats()
+    return jsonify(status)
 
 
 @app.route("/api/jobs")
@@ -286,52 +224,47 @@ def web():
     if request.method == "POST":
         action = request.form.get("action", "search")
         
-        if action == "update":
-            if not scraper_status["running"] and not loader_status["running"]:
-                thread = threading.Thread(target=run_etl_process)
-                thread.start()
-                success_msg = "Processo de atualização (Scrape + Load) iniciado! Acompanhe no painel."
-            else:
-                error = "Uma operação já está em andamento."
-                
-        elif action == "scrape":
-            if not scraper_status["running"]:
-                thread = threading.Thread(target=run_scraper)
-                thread.start()
+        try:
+            if action == "update":
+                pipeline_steps = [
+                    ('scraper', task_scraper),
+                    ('loader', task_loader),
+                    ('validator', task_validator)
+                ]
+                pulse.run_pipeline(pipeline_steps)
+                success_msg = "Pipeline completo iniciado! Acompanhe no painel."
+                    
+            elif action == "scrape":
+                pulse.run_job("scraper", task_scraper)
                 success_msg = "Scraping iniciado!"
-            else:
-                error = "Scraper já está rodando."
-                
-        elif action == "load":
-            if not loader_status["running"]:
-                thread = threading.Thread(target=run_loader)
-                thread.start()
+                    
+            elif action == "load":
+                pulse.run_job("loader", task_loader)
                 success_msg = "Loader iniciado!"
-            else:
-                error = "Loader já está rodando."
-                
-        elif action == "validate":
-            if not validator_status["running"]:
-                thread = threading.Thread(target=run_validator)
-                thread.start()
+                    
+            elif action == "validate":
+                pulse.run_job("validator", task_validator)
                 success_msg = "Validação de links iniciada!"
-            else:
-                error = "Validação já está em andamento."
                 
-        elif action == "search":
-            word = request.form.get("word", "")
-            if word:
-                results = search(word)
-            else:
-                error = "Digite um termo para buscar."
+            elif action == "search":
+                word = request.form.get("word", "")
+                if word:
+                    results = search(word)
+                else:
+                    error = "Digite um termo para buscar."
+        except RuntimeError as e:
+            error = str(e)
     
-    # Obtém estatísticas
+    # Obtém status atualizado do Pulse
+    current_status = pulse.get_status()
+    
+    # Obtém estatísticas do banco
     stats = get_stats()
     
-    # Badges de status
-    scraper_badge = "🟢 Pronto" if not scraper_status["running"] else "🔄 Executando..."
-    loader_badge = "🟢 Pronto" if not loader_status["running"] else "🔄 Executando..."
-    validator_badge = "🟢 Pronto" if not validator_status["running"] else "🔄 Validando..."
+    # Badges de status (Extraídos do Pulse)
+    scraper_badge = "🟢 Pronto" if not current_status["scraper"]["running"] else "🔄 Executando..."
+    loader_badge = "🟢 Pronto" if not current_status["loader"]["running"] else "🔄 Executando..."
+    validator_badge = "🟢 Pronto" if not current_status["validator"]["running"] else "🔄 Validando..."
     
     # HTML da aplicação
     return f"""
@@ -599,25 +532,25 @@ def web():
                 <div class="controls-section">
                     <form method="post" style="display:inline;">
                         <input type="hidden" name="action" value="update">
-                        <button type="submit" class="btn btn-success" {'disabled' if scraper_status["running"] or loader_status["running"] else ''}>
+                        <button type="submit" class="btn btn-success" {'disabled' if current_status["scraper"]["running"] or current_status["loader"]["running"] else ''}>
                             🔄 Atualizar Vagas (Completo)
                         </button>
                     </form>
                     <form method="post" style="display:inline;">
                         <input type="hidden" name="action" value="scrape">
-                        <button type="submit" class="btn btn-secondary" {'disabled' if scraper_status["running"] else ''}>
+                        <button type="submit" class="btn btn-secondary" {'disabled' if current_status["scraper"]["running"] else ''}>
                             📥 Apenas Scrape
                         </button>
                     </form>
                     <form method="post" style="display:inline;">
                         <input type="hidden" name="action" value="load">
-                        <button type="submit" class="btn btn-secondary" {'disabled' if loader_status["running"] else ''}>
+                        <button type="submit" class="btn btn-secondary" {'disabled' if current_status["loader"]["running"] else ''}>
                             💾 Apenas Load (DB)
                         </button>
                     </form>
                     <form method="post" style="display:inline;">
                         <input type="hidden" name="action" value="validate">
-                        <button type="submit" class="btn btn-secondary" {'disabled' if validator_status["running"] else ''}>
+                        <button type="submit" class="btn btn-secondary" {'disabled' if current_status["validator"]["running"] else ''}>
                             🔍 Validar Links (Quality Gate)
                         </button>
                     </form>
@@ -705,7 +638,7 @@ def web():
                 }}
                 
                 // Auto-refresh if running
-                {'setTimeout(() => location.reload(), 5000);' if scraper_status["running"] or loader_status["running"] or validator_status["running"] else ''}
+                {'setTimeout(() => location.reload(), 5000);' if current_status["scraper"]["running"] or current_status["loader"]["running"] or current_status["validator"]["running"] else ''}
             }}
 
             // --- BROWSE LOGIC (Datatable) ---
