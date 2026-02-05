@@ -152,6 +152,78 @@ def api_status():
     })
 
 
+@app.route("/api/jobs")
+def api_jobs():
+    """Retorna todas as vagas para o datatable."""
+    try:
+        connection = sqlite3.connect("jobs.db")
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
+        
+        # Parâmetros opcionais
+        search = request.args.get("search", "")
+        company = request.args.get("company", "")
+        limit = request.args.get("limit", type=int)
+        offset = request.args.get("offset", 0, type=int)
+        
+        # Query base
+        query = """
+            SELECT id, title, link, company, created_at 
+            FROM positions 
+            WHERE 1=1
+        """
+        params = []
+        
+        # Filtros
+        if search:
+            query += " AND (UPPER(title) LIKE UPPER(?) OR UPPER(company) LIKE UPPER(?))"
+            params.extend([f"%{search}%", f"%{search}%"])
+        
+        if company:
+            query += " AND UPPER(company) LIKE UPPER(?)"
+            params.append(f"%{company}%")
+        
+        # Ordenação
+        query += " ORDER BY created_at DESC"
+        
+        # Paginação
+        if limit:
+            query += f" LIMIT {limit} OFFSET {offset}"
+        
+        cursor.execute(query, params)
+        jobs = [dict(row) for row in cursor.fetchall()]
+        
+        # Total count para paginação
+        count_query = "SELECT COUNT(*) as total FROM positions WHERE 1=1"
+        count_params = []
+        if search:
+            count_query += " AND (UPPER(title) LIKE UPPER(?) OR UPPER(company) LIKE UPPER(?))"
+            count_params.extend([f"%{search}%", f"%{search}%"])
+        if company:
+            count_query += " AND UPPER(company) LIKE UPPER(?)"
+            count_params.append(f"%{company}%")
+        
+        cursor.execute(count_query, count_params)
+        total = cursor.fetchone()["total"]
+        
+        connection.close()
+        
+        return jsonify({
+            "jobs": jobs,
+            "total": total,
+            "count": len(jobs)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/browse")
+def browse():
+    """Página de navegação com datatable."""
+    with open("templates/browse.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
 @app.route("/", methods=["GET", "POST"])
 def web():
     """Interface web principal."""
@@ -466,6 +538,11 @@ def web():
                                 💾 Apenas Load
                             </button>
                         </form>
+                        <a href="/browse" style="display:inline-block; text-decoration:none;">
+                            <button type="button" class="btn-secondary">
+                                📋 Browse All Jobs
+                            </button>
+                        </a>
                     </div>
                     
                     <div class="status">
