@@ -42,6 +42,25 @@ else:
         )
     """)
     
+    # Migração automática: Verificar se colunas novas existem
+    cursor.execute("PRAGMA table_info(positions)")
+    columns = [info[1] for info in cursor.fetchall()]
+    
+    
+    if "created_at" not in columns:
+        logger.info("Migrating database: Adding created_at column")
+        # SQLite limita defaults dinâmicos em ALTER TABLE, usamos string vazia ou null
+        cursor.execute("ALTER TABLE positions ADD COLUMN created_at TIMESTAMP")
+        # Atualizar registros existentes com data atual
+        cursor.execute("UPDATE positions SET created_at = datetime('now') WHERE created_at IS NULL")
+        
+    if "updated_at" not in columns:
+        logger.info("Migrating database: Adding updated_at column")
+        cursor.execute("ALTER TABLE positions ADD COLUMN updated_at TIMESTAMP")
+        cursor.execute("UPDATE positions SET updated_at = datetime('now') WHERE updated_at IS NULL")
+    
+    connection.commit()
+    
     # Criar índice para buscas mais rápidas
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_title ON positions(title)
@@ -117,10 +136,11 @@ else:
 
                     try:
                         # INSERT OR IGNORE para deduplicação
+                        now = datetime.utcnow()
                         cursor.execute(
-                            """INSERT INTO positions (title, link, company) 
-                               VALUES (?, ?, ?)""",
-                            (title, link, company),
+                            """INSERT INTO positions (title, link, company, created_at, updated_at) 
+                               VALUES (?, ?, ?, ?, ?)""",
+                            (title, link, company, now, now),
                         )
                         
                         if cursor.rowcount > 0:
