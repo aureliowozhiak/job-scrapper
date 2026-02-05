@@ -14,10 +14,16 @@ def search(word):
     """Busca vagas no banco de dados."""
     try:
         connection = sqlite3.connect("jobs.db")
+        connection.row_factory = sqlite3.Row  # Permite acessar colunas por nome
         cursor = connection.cursor()
-        query = "SELECT link FROM positions WHERE UPPER(title) LIKE UPPER(?)"
-        cursor.execute(query, (f"%{word}%",))
-        results = [row[0] for row in cursor.fetchall()]
+        query = """
+            SELECT id, title, link, company, created_at 
+            FROM positions 
+            WHERE UPPER(title) LIKE UPPER(?) OR UPPER(company) LIKE UPPER(?)
+            ORDER BY created_at DESC
+        """
+        cursor.execute(query, (f"%{word}%", f"%{word}%"))
+        results = [dict(row) for row in cursor.fetchall()]
         connection.close()
         return results
     except Exception:
@@ -344,28 +350,78 @@ def web():
                     border: 1px solid rgba(0,200,83,0.3);
                     color: #00c853;
                 }}
-                .results {{
-                    list-style: none;
-                    padding: 0;
-                    margin: 0;
+                .job-list {{
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
                 }}
-                .results li {{
-                    padding: 14px 18px;
+                .job-card {{
                     background: rgba(255,255,255,0.05);
-                    border-radius: 10px;
-                    margin-bottom: 10px;
-                    transition: background 0.2s;
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 12px;
+                    padding: 20px;
+                    transition: all 0.3s;
+                    cursor: pointer;
                 }}
-                .results li:hover {{
+                .job-card:hover {{
                     background: rgba(255,255,255,0.1);
+                    border-color: #00d9ff;
+                    transform: translateX(4px);
                 }}
-                .results a {{
+                .job-title {{
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: #00d9ff;
+                    margin: 0 0 8px 0;
+                    line-height: 1.3;
+                }}
+                .job-company {{
+                    font-size: 16px;
+                    color: #aaa;
+                    margin: 0 0 12px 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }}
+                .job-meta {{
+                    display: flex;
+                    gap: 16px;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid rgba(255,255,255,0.1);
+                }}
+                .job-date {{
+                    font-size: 13px;
+                    color: #888;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }}
+                .job-link {{
+                    font-size: 13px;
                     color: #00d9ff;
                     text-decoration: none;
-                    word-break: break-all;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    margin-left: auto;
                 }}
-                .results a:hover {{
+                .job-link:hover {{
                     text-decoration: underline;
+                }}
+                .results-header {{
+                    color: #aaa;
+                    font-size: 14px;
+                    margin-bottom: 16px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }}
+                .results-count {{
+                    font-weight: 600;
+                    color: #00d9ff;
                 }}
                 .empty {{
                     text-align: center;
@@ -429,9 +485,28 @@ def web():
                     </form>
                     
                     {f'''
-                    <ul class="results">
-                        {''.join(f"<li><a href='{link}' target='_blank'>{link}</a></li>" for link in results)}
-                    </ul>
+                    <div class="results-header">
+                        <span>Resultados da busca</span>
+                        <span class="results-count">{len(results)} vaga{'s' if len(results) != 1 else ''} encontrada{'s' if len(results) != 1 else ''}</span>
+                    </div>
+                    <div class="job-list">
+                        {''.join(f"""
+                        <div class="job-card" onclick="window.open('{job['link']}', '_blank')">
+                            <h3 class="job-title">{job['title']}</h3>
+                            <div class="job-company">
+                                🏢 {job['company']}
+                            </div>
+                            <div class="job-meta">
+                                <span class="job-date">
+                                    📅 Adicionado em {job['created_at'][:10] if job.get('created_at') else 'N/A'}
+                                </span>
+                                <a href="{job['link']}" target="_blank" class="job-link" onclick="event.stopPropagation()">
+                                    🔗 Ver vaga
+                                </a>
+                            </div>
+                        </div>
+                        """ for job in results)}
+                    </div>
                     ''' if results else ('<div class="empty">Busque por vagas usando o campo acima</div>' if not word else '<div class="empty">Nenhuma vaga encontrada para "' + word + '"</div>')}
                 </div>
             </div>
