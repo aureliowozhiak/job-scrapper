@@ -12,23 +12,21 @@
 - 🕷️ **Web Scraping**: Coleta automatizada de vagas de múltiplos sites
 - 🗄️ **Banco de Dados**: Armazenamento em SQLite com deduplicação automática
 - 🌐 **API REST**: Interface JSON para busca de vagas
-- 🎨 **Interface Web**: Busca visual e intuitiva
+- 🎨 **Interface Web Moderna**: Interface escura com controles integrados
 - 📊 **Logging Estruturado**: Monitoramento completo de operações
 - 🔄 **Retry Logic**: Requisições HTTP com tentativas automáticas
-- 🐳 **Docker**: Deploy facilitado com containers
-- ✅ **Testes**: Cobertura de testes automatizados
+- ⚡ **Controle em Tempo Real**: Scraping e loading via interface web
+- ✅ **Testes**: 99% de cobertura de código
 
 ## 📂 Estrutura do Projeto
 
 ```
 job-scrapper/
-├── api.py                 # API Flask (REST + Web UI)
-├── app.py                 # Script ETL principal
-├── load.py                # Carregamento no banco de dados
+├── api.py                 # API Flask (REST + Web UI + Scraper + Loader)
+├── app.py                 # Script ETL (executado pela API)
+├── load.py                # Carregamento no banco (executado pela API)
 ├── endpoints.py           # Configuração de sites
 ├── requirements.txt       # Dependências Python
-├── Dockerfile            # Container Docker
-├── docker-compose.yml    # Orquestração de serviços
 ├── pytest.ini            # Configuração de testes
 │
 ├── methods/              # Módulos ETL
@@ -43,10 +41,11 @@ job-scrapper/
 │   └── spiders/
 │       └── skipthedrive.py
 │
-├── tests/                # Testes automatizados
+├── tests/                # Testes automatizados (41 testes)
 │   ├── test_extract.py
 │   ├── test_transform.py
-│   └── test_api.py
+│   ├── test_api.py
+│   └── test_logger.py
 │
 ├── lake/                 # Data lake (HTML bruto)
 ├── output/               # JSONs processados
@@ -54,26 +53,9 @@ job-scrapper/
 └── jobs.db               # Banco SQLite
 ```
 
-## 🚀 Como Usar
+## 🚀 Quick Start
 
-### Opção 1: Docker (Recomendado)
-
-```bash
-# Iniciar API
-docker-compose up api
-
-# Acessar em: http://localhost:5000
-
-# Executar scraping
-docker-compose run --rm scraper
-
-# Carregar dados no banco
-docker-compose run --rm loader
-```
-
-### Opção 2: Instalação Local
-
-#### 1. Preparar ambiente
+### 1. Preparar ambiente
 
 ```bash
 # Clone o repositório
@@ -93,18 +75,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### 2. Executar scraping
+### 2. Executar aplicação
 
 ```bash
-# ETL completo (BeautifulSoup)
-python app.py
-
-# Carregar dados no banco
-python load.py
-
-# Iniciar API
+# Iniciar API (Web UI + Scraper + Loader integrados)
 python api.py
 ```
+
+### 3. Usar a aplicação
+
+Acesse `http://localhost:5000` e você verá:
+
+- 📊 **Dashboard** com estatísticas (total de vagas, empresas)
+- 🔄 **Botão "Atualizar Vagas"** - Executa scraping e loading automaticamente
+- 🔍 **Campo de Busca** - Pesquise vagas por palavra-chave
+- 📈 **Status em Tempo Real** - Monitore operações em andamento
 
 #### 3. Usar Scrapy (alternativa)
 
@@ -130,6 +115,18 @@ curl "http://localhost:5000/positions?word=python"
     "https://skipthedrive.com/job/456"
   ]
 }
+```
+
+### Endpoints de Controle (POST)
+
+- `POST /api/scrape` - Inicia o processo de scraping
+- `POST /api/load` - Inicia o carregamento no banco
+- `POST /api/update` - Executa scrape seguido de load
+- `GET /api/status` - Retorna status das operações e estatísticas
+
+Exemplo:
+```bash
+curl -X POST http://localhost:5000/api/update
 ```
 
 ### Interface Web

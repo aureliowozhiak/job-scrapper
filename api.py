@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 
 app = Flask(__name__)
 
@@ -93,6 +93,29 @@ def run_loader():
         loader_status["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+# Estado para validação
+validator_status = {"running": False, "last_run": None, "message": "", "stats": None}
+
+
+def run_validator():
+    """Executa validação de links em background."""
+    validator_status["running"] = True
+    validator_status["message"] = "Validando links de vagas..."
+    validator_status["stats"] = None
+    
+    try:
+        from validate import cleanup_invalid_jobs
+        stats = cleanup_invalid_jobs(batch_size=50)
+        
+        validator_status["stats"] = stats
+        validator_status["message"] = f"Validação concluída: {stats['removed']} vagas removidas"
+    except Exception as e:
+        validator_status["message"] = f"Erro na validação: {str(e)}"
+    finally:
+        validator_status["running"] = False
+        validator_status["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
 @app.route("/positions")
 def positions():
     """Endpoint API para buscar vagas."""
@@ -127,18 +150,45 @@ def api_load():
 
 @app.route("/api/update", methods=["POST"])
 def api_update():
-    """Endpoint para executar scraping + loading."""
-    if scraper_status["running"] or loader_status["running"]:
+    """Endpoint para executar scraping + loading + validation."""
+    if scraper_status["running"] or loader_status["running"] or validator_status["running"]:
         return jsonify({"error": "Uma operação já está em andamento"}), 409
     
-    def run_both():
+    def run_full_pipeline():
+        """Pipeline completo: scrape -> load -> validate."""
         run_scraper()
         if scraper_status["success"]:
             run_loader()
+            if loader_status.get("success", False):
+                # Pós-validação automática (limpa jobs obsoletos)
+                run_validator()
     
-    thread = threading.Thread(target=run_both)
+    thread = threading.Thread(target=run_full_pipeline)
     thread.start()
-    return jsonify({"message": "Atualização iniciada (scrape + load)"})
+    return jsonify({"message": "Pipeline completo iniciado (scrape + load + validate)"})
+
+
+# Alias para compatibilidade com código existente
+def run_etl_process():
+    """Executa pipeline completo ETL + validação."""
+    run_scraper()
+    if scraper_status["success"]:
+        run_loader()
+        if loader_status.get("success", False):
+            run_validator()
+
+
+
+@app.route("/api/validate", methods=["POST"])
+def api_validate():
+    """Endpoint para validar links de vagas."""
+    if validator_status["running"]:
+        return jsonify({"error": "Validação já está em andamento"}), 409
+    
+    thread = threading.Thread(target=run_validator)
+    thread.start()
+    return jsonify({"message": "Validação de links iniciada"})
+
 
 
 @app.route("/api/status")
@@ -148,6 +198,7 @@ def api_status():
     return jsonify({
         "scraper": scraper_status,
         "loader": loader_status,
+        "validator": validator_status,
         "database": stats
     })
 
@@ -217,6 +268,12 @@ def api_jobs():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/browse")
+def browse():
+    """Redireciona para a página principal (compatibilidade)."""
+    return redirect("/")
+
+
 @app.route("/", methods=["GET", "POST"])
 def web():
     """Interface web unificada (Dashboard + Search + Browse)."""
@@ -253,6 +310,14 @@ def web():
             else:
                 error = "Loader já está rodando."
                 
+        elif action == "validate":
+            if not validator_status["running"]:
+                thread = threading.Thread(target=run_validator)
+                thread.start()
+                success_msg = "Validação de links iniciada!"
+            else:
+                error = "Validação já está em andamento."
+                
         elif action == "search":
             word = request.form.get("word", "")
             if word:
@@ -266,6 +331,7 @@ def web():
     # Badges de status
     scraper_badge = "🟢 Pronto" if not scraper_status["running"] else "🔄 Executando..."
     loader_badge = "🟢 Pronto" if not loader_status["running"] else "🔄 Executando..."
+    validator_badge = "🟢 Pronto" if not validator_status["running"] else "🔄 Validando..."
     
     # HTML da aplicação
     return f"""
@@ -494,6 +560,7 @@ def web():
                     <div class="status-badges">
                         <span>Scraper: {scraper_badge}</span>
                         <span>Loader: {loader_badge}</span>
+                        <span>Validator: {validator_badge}</span>
                     </div>
                 </div>
                 
@@ -546,6 +613,12 @@ def web():
                         <input type="hidden" name="action" value="load">
                         <button type="submit" class="btn btn-secondary" {'disabled' if loader_status["running"] else ''}>
                             💾 Apenas Load (DB)
+                        </button>
+                    </form>
+                    <form method="post" style="display:inline;">
+                        <input type="hidden" name="action" value="validate">
+                        <button type="submit" class="btn btn-secondary" {'disabled' if validator_status["running"] else ''}>
+                            🔍 Validar Links (Quality Gate)
                         </button>
                     </form>
                 </div>
@@ -632,7 +705,7 @@ def web():
                 }}
                 
                 // Auto-refresh if running
-                {'setTimeout(() => location.reload(), 5000);' if scraper_status["running"] or loader_status["running"] else ''}
+                {'setTimeout(() => location.reload(), 5000);' if scraper_status["running"] or loader_status["running"] or validator_status["running"] else ''}
             }}
 
             // --- BROWSE LOGIC (Datatable) ---
