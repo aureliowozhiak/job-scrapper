@@ -1,10 +1,26 @@
 """Extract module for fetching job listings from configured sites."""
 import requests
 import time
+import random
 from typing import Dict, Any
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Headers que simulam um navegador real
+BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9,pt-BR;q=0.8,pt;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
+}
 
 
 class Extract:
@@ -28,6 +44,8 @@ class Extract:
         self.utils = utils
         self.max_retries = 3
         self.retry_delay = 2  # seconds
+        self.session = requests.Session()
+        self.session.headers.update(BROWSER_HEADERS)
         
         logger.info(f"Extract initialized for date: {self.year}/{self.month}/{self.day}")
 
@@ -44,10 +62,13 @@ class Extract:
         Raises:
             requests.RequestException: After all retries fail
         """
+        # Delay aleatório para parecer mais humano (1-3 segundos)
+        time.sleep(random.uniform(1, 3))
+        
         for attempt in range(self.max_retries):
             try:
                 logger.debug(f"Attempting request to {url} (attempt {attempt + 1}/{self.max_retries})")
-                response = requests.get(url, timeout=30)
+                response = self.session.get(url, timeout=30)
                 response.raise_for_status()
                 logger.debug(f"Successfully fetched {url}")
                 return response
