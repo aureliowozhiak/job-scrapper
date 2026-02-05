@@ -217,382 +217,514 @@ def api_jobs():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/browse")
-def browse():
-    """Página de navegação com datatable."""
-    with open("templates/browse.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-
 @app.route("/", methods=["GET", "POST"])
 def web():
-    """Interface web principal."""
+    """Interface web unificada (Dashboard + Search + Browse)."""
     results = []
     error = None
     success_msg = None
     word = ""
     
-    # Processa ações de formulário
+    # Processa ações de formulário (POST)
     if request.method == "POST":
         action = request.form.get("action", "search")
         
-        if action == "search":
-            word = request.form.get("word", "")
-            if not word:
-                error = "Parâmetro 'word' é obrigatório"
+        if action == "update":
+            if not scraper_status["running"] and not loader_status["running"]:
+                thread = threading.Thread(target=run_etl_process)
+                thread.start()
+                success_msg = "Processo de atualização (Scrape + Load) iniciado! Acompanhe no painel."
             else:
-                results = search(word)
-        
+                error = "Uma operação já está em andamento."
+                
         elif action == "scrape":
             if not scraper_status["running"]:
                 thread = threading.Thread(target=run_scraper)
                 thread.start()
-                success_msg = "🔄 Scraping iniciado em background..."
+                success_msg = "Scraping iniciado!"
             else:
-                error = "Scraping já está em andamento"
-        
+                error = "Scraper já está rodando."
+                
         elif action == "load":
             if not loader_status["running"]:
                 thread = threading.Thread(target=run_loader)
                 thread.start()
-                success_msg = "🔄 Loading iniciado em background..."
+                success_msg = "Loader iniciado!"
             else:
-                error = "Loading já está em andamento"
-        
-        elif action == "update":
-            if not scraper_status["running"] and not loader_status["running"]:
-                def run_both():
-                    run_scraper()
-                    if scraper_status["success"]:
-                        run_loader()
-                thread = threading.Thread(target=run_both)
-                thread.start()
-                success_msg = "🔄 Atualização completa iniciada (scrape + load)..."
+                error = "Loader já está rodando."
+                
+        elif action == "search":
+            word = request.form.get("word", "")
+            if word:
+                results = search(word)
             else:
-                error = "Uma operação já está em andamento"
+                error = "Digite um termo para buscar."
     
     # Obtém estatísticas
     stats = get_stats()
     
-    # Status das operações
+    # Badges de status
     scraper_badge = "🟢 Pronto" if not scraper_status["running"] else "🔄 Executando..."
     loader_badge = "🟢 Pronto" if not loader_status["running"] else "🔄 Executando..."
     
-    if scraper_status["last_run"]:
-        scraper_badge += f" (Último: {scraper_status['last_run']})"
-    if loader_status["last_run"]:
-        loader_badge += f" (Último: {loader_status['last_run']})"
-    
+    # HTML da aplicação
     return f"""
-    <html>
-        <head>
-            <title>Job Scrapper - Busca de Vagas</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                * {{ box-sizing: border-box; }}
-                body {{
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    font-family: 'Segoe UI', Arial, sans-serif;
-                    min-height: 100vh;
-                    margin: 0;
-                    padding: 20px;
-                    color: #fff;
-                }}
-                .container {{
-                    max-width: 800px;
-                    margin: 0 auto;
-                }}
-                .card {{
-                    background: rgba(255,255,255,0.1);
-                    backdrop-filter: blur(10px);
-                    padding: 24px;
-                    border-radius: 16px;
-                    margin-bottom: 20px;
-                    border: 1px solid rgba(255,255,255,0.1);
-                }}
-                h1 {{
-                    color: #00d9ff;
-                    margin: 0 0 8px 0;
-                    font-size: 28px;
-                }}
-                .subtitle {{
-                    color: #888;
-                    margin-bottom: 20px;
-                }}
-                .stats {{
-                    display: flex;
-                    gap: 20px;
-                    margin-bottom: 20px;
-                }}
-                .stat {{
-                    background: rgba(0,217,255,0.1);
-                    padding: 16px;
-                    border-radius: 12px;
-                    flex: 1;
-                    text-align: center;
-                }}
-                .stat-value {{
-                    font-size: 32px;
-                    font-weight: bold;
-                    color: #00d9ff;
-                }}
-                .stat-label {{
-                    color: #888;
-                    font-size: 14px;
-                }}
-                .actions {{
-                    display: flex;
-                    gap: 10px;
-                    flex-wrap: wrap;
-                    margin-bottom: 20px;
-                }}
-                .search-form {{
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                }}
-                input[type="text"] {{
-                    flex: 1;
-                    padding: 14px 18px;
-                    border: 2px solid rgba(255,255,255,0.2);
-                    border-radius: 12px;
-                    font-size: 16px;
-                    background: rgba(255,255,255,0.1);
-                    color: #fff;
-                    outline: none;
-                    transition: border-color 0.3s;
-                }}
-                input[type="text"]:focus {{
-                    border-color: #00d9ff;
-                }}
-                input[type="text"]::placeholder {{
-                    color: #888;
-                }}
-                button {{
-                    padding: 14px 24px;
-                    border: none;
-                    border-radius: 12px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                }}
-                .btn-primary {{
-                    background: linear-gradient(135deg, #00d9ff, #0099ff);
-                    color: #fff;
-                }}
-                .btn-primary:hover {{
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 20px rgba(0,217,255,0.3);
-                }}
-                .btn-secondary {{
-                    background: rgba(255,255,255,0.1);
-                    color: #fff;
-                    border: 1px solid rgba(255,255,255,0.2);
-                }}
-                .btn-secondary:hover {{
-                    background: rgba(255,255,255,0.2);
-                }}
-                .btn-success {{
-                    background: linear-gradient(135deg, #00c853, #00e676);
-                    color: #fff;
-                }}
-                .btn-success:hover {{
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 20px rgba(0,200,83,0.3);
-                }}
-                .status {{
-                    font-size: 13px;
-                    color: #888;
-                    margin-top: 10px;
-                }}
-                .alert {{
-                    padding: 14px 18px;
-                    border-radius: 12px;
-                    margin-bottom: 20px;
-                }}
-                .alert-error {{
-                    background: rgba(255,82,82,0.2);
-                    border: 1px solid rgba(255,82,82,0.3);
-                    color: #ff5252;
-                }}
-                .alert-success {{
-                    background: rgba(0,200,83,0.2);
-                    border: 1px solid rgba(0,200,83,0.3);
-                    color: #00c853;
-                }}
-                .job-list {{
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                }}
-                .job-card {{
-                    background: rgba(255,255,255,0.05);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    border-radius: 12px;
-                    padding: 20px;
-                    transition: all 0.3s;
-                    cursor: pointer;
-                }}
-                .job-card:hover {{
-                    background: rgba(255,255,255,0.1);
-                    border-color: #00d9ff;
-                    transform: translateX(4px);
-                }}
-                .job-title {{
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #00d9ff;
-                    margin: 0 0 8px 0;
-                    line-height: 1.3;
-                }}
-                .job-company {{
-                    font-size: 16px;
-                    color: #aaa;
-                    margin: 0 0 12px 0;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }}
-                .job-meta {{
-                    display: flex;
-                    gap: 16px;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    margin-top: 12px;
-                    padding-top: 12px;
-                    border-top: 1px solid rgba(255,255,255,0.1);
-                }}
-                .job-date {{
-                    font-size: 13px;
-                    color: #888;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                }}
-                .job-link {{
-                    font-size: 13px;
-                    color: #00d9ff;
-                    text-decoration: none;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                    margin-left: auto;
-                }}
-                .job-link:hover {{
-                    text-decoration: underline;
-                }}
-                .results-header {{
-                    color: #aaa;
-                    font-size: 14px;
-                    margin-bottom: 16px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }}
-                .results-count {{
-                    font-weight: 600;
-                    color: #00d9ff;
-                }}
-                .empty {{
-                    text-align: center;
-                    color: #888;
-                    padding: 40px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="card">
-                    <h1>🔍 Job Scrapper</h1>
-                    <p class="subtitle">Busque e atualize vagas de emprego remotas</p>
-                    
-                    <div class="stats">
-                        <div class="stat">
-                            <div class="stat-value">{stats['total_jobs']}</div>
-                            <div class="stat-label">Vagas no Banco</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">{stats['total_companies']}</div>
-                            <div class="stat-label">Empresas</div>
-                        </div>
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <title>Job Scrapper Pro</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            :root {{
+                --primary: #00d9ff;
+                --primary-dark: #00b3d4;
+                --bg-dark: #1a1a2e;
+                --bg-card: rgba(255, 255, 255, 0.05);
+                --text-main: #ffffff;
+                --text-muted: #888888;
+                --border: rgba(255, 255, 255, 0.1);
+            }}
+            * {{ box-sizing: border-box; }}
+            body {{
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                font-family: 'Inter', sans-serif;
+                min-height: 100vh;
+                margin: 0;
+                color: var(--text-main);
+                padding-bottom: 40px;
+            }}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            
+            /* Header & Tabs */
+            .app-header {{
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                margin-bottom: 30px;
+                background: rgba(0,0,0,0.2);
+                padding: 20px;
+                border-radius: 16px;
+                border: 1px solid var(--border);
+            }}
+            .app-title-row {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            .app-title h1 {{
+                margin: 0;
+                color: var(--primary);
+                font-size: 24px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }}
+            .status-badges {{
+                display: flex;
+                gap: 12px;
+                font-size: 13px;
+                background: rgba(0,0,0,0.3);
+                padding: 8px 16px;
+                border-radius: 20px;
+            }}
+            
+            /* Tabs Navigation */
+            .tabs {{
+                display: flex;
+                gap: 5px;
+                background: rgba(255,255,255,0.05);
+                padding: 5px;
+                border-radius: 12px;
+                width: fit-content;
+            }}
+            .tab-btn {{
+                padding: 10px 24px;
+                border: none;
+                background: transparent;
+                color: var(--text-muted);
+                font-weight: 600;
+                cursor: pointer;
+                border-radius: 8px;
+                transition: all 0.2s;
+            }}
+            .tab-btn:hover {{
+                color: #fff;
+                background: rgba(255,255,255,0.05);
+            }}
+            .tab-btn.active {{
+                background: var(--primary);
+                color: #1a1a2e;
+            }}
+            
+            /* Tab Content Areas */
+            .tab-content {{
+                display: none;
+                animation: fadeIn 0.3s ease;
+            }}
+            .tab-content.active {{
+                display: block;
+            }}
+            @keyframes fadeIn {{
+                from {{ opacity: 0; transform: translateY(10px); }}
+                to {{ opacity: 1; transform: translateY(0); }}
+            }}
+            
+            /* Controls Section */
+            .controls-section {{
+                display: flex;
+                gap: 12px;
+                margin-top: 10px;
+                flex-wrap: wrap;
+            }}
+            .btn {{
+                padding: 12px 20px;
+                border: none;
+                border-radius: 10px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 14px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            }}
+            .btn:disabled {{
+                opacity: 0.5;
+                cursor: not-allowed;
+            }}
+            .btn-primary {{
+                background: var(--primary);
+                color: #1a1a2e;
+            }}
+            .btn-primary:hover:not(:disabled) {{
+                background: var(--primary-dark);
+                transform: translateY(-2px);
+            }}
+            .btn-secondary {{
+                background: var(--bg-card);
+                color: #fff;
+                border: 1px solid var(--border);
+            }}
+            .btn-secondary:hover:not(:disabled) {{
+                background: rgba(255,255,255,0.1);
+            }}
+            .btn-success {{
+                background: #00c853;
+                color: #fff;
+            }}
+            .btn-success:hover:not(:disabled) {{
+                background: #00e676;
+                transform: translateY(-2px);
+            }}
+            
+            /* Stats Cards */
+            .stats-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin-bottom: 30px;
+            }}
+            .stat-card {{
+                background: var(--bg-card);
+                padding: 24px;
+                border-radius: 16px;
+                border: 1px solid var(--border);
+                text-align: center;
+            }}
+            .stat-val {{ font-size: 36px; font-weight: 700; color: var(--primary); }}
+            .stat-label {{ color: var(--text-muted); font-size: 14px; margin-top: 5px; }}
+
+            /* Search & List Styles */
+            .search-box input {{
+                width: 100%;
+                padding: 16px;
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                color: #fff;
+                font-size: 16px;
+                outline: none;
+            }}
+            .search-box input:focus {{ border-color: var(--primary); }}
+            
+            .job-card {{
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }}
+            .job-card:hover {{
+                border-color: var(--primary);
+                background: rgba(255,255,255,0.08);
+            }}
+            .job-card h3 {{ color: var(--primary); margin: 0 0 8px 0; font-size: 18px; }}
+            .job-meta {{ display: flex; gap: 15px; font-size: 13px; color: var(--text-muted); }}
+            
+            /* Datatable Styles */
+            .filters-row {{ display: flex; gap: 12px; margin-bottom: 20px; }}
+            .filters-row input {{ flex: 1; padding: 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; color: #fff; }}
+            .pagination {{ display: flex; justify-content: center; gap: 5px; margin-top: 20px; }}
+            .page-btn {{ padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border); color: #fff; cursor: pointer; border-radius: 6px; }}
+            .page-btn.active {{ background: var(--primary); color: #1a1a2e; }}
+
+            .alerts {{ margin: 20px 0; }}
+            .alert-success {{ background: rgba(0, 200, 83, 0.2); color: #00c853; padding: 15px; border-radius: 8px; }}
+            .alert-error {{ background: rgba(255, 82, 82, 0.2); color: #ff5252; padding: 15px; border-radius: 8px; }}
+
+        </style>
+    </head>
+    <body onload="initApp()">
+        <div class="container">
+        
+            <!-- Header Unificado -->
+            <div class="app-header">
+                <div class="app-title-row">
+                    <div class="app-title">
+                        <h1>🚀 Job Scrapper Pro</h1>
                     </div>
-                    
-                    <div class="actions">
-                        <form method="post" style="display:inline;">
-                            <input type="hidden" name="action" value="update">
-                            <button type="submit" class="btn-success" {'disabled' if scraper_status["running"] or loader_status["running"] else ''}>
-                                🔄 Atualizar Vagas
-                            </button>
-                        </form>
-                        <form method="post" style="display:inline;">
-                            <input type="hidden" name="action" value="scrape">
-                            <button type="submit" class="btn-secondary" {'disabled' if scraper_status["running"] else ''}>
-                                📥 Apenas Scrape
-                            </button>
-                        </form>
-                        <form method="post" style="display:inline;">
-                            <input type="hidden" name="action" value="load">
-                            <button type="submit" class="btn-secondary" {'disabled' if loader_status["running"] else ''}>
-                                💾 Apenas Load
-                            </button>
-                        </form>
-                        <a href="/browse" style="display:inline-block; text-decoration:none;">
-                            <button type="button" class="btn-secondary">
-                                📋 Browse All Jobs
-                            </button>
-                        </a>
-                    </div>
-                    
-                    <div class="status">
-                        <div>Scraper: {scraper_badge}</div>
-                        <div>Loader: {loader_badge}</div>
+                    <div class="status-badges">
+                        <span>Scraper: {scraper_badge}</span>
+                        <span>Loader: {loader_badge}</span>
                     </div>
                 </div>
                 
-                {"<div class='alert alert-error'>" + error + "</div>" if error else ""}
-                {"<div class='alert alert-success'>" + success_msg + "</div>" if success_msg else ""}
-                
-                <div class="card">
-                    <form method="post" class="search-form">
-                        <input type="hidden" name="action" value="search">
-                        <input type="text" name="word" placeholder="Digite o termo da vaga (ex: Python, React, Data)" value="{word}">
-                        <button type="submit" class="btn-primary">Buscar</button>
-                    </form>
-                    
-                    {f'''
-                    <div class="results-header">
-                        <span>Resultados da busca</span>
-                        <span class="results-count">{len(results)} vaga{'s' if len(results) != 1 else ''} encontrada{'s' if len(results) != 1 else ''}</span>
-                    </div>
-                    <div class="job-list">
-                        {''.join(f"""
-                        <div class="job-card" onclick="window.open('{job['link']}', '_blank')">
-                            <h3 class="job-title">{job['title']}</h3>
-                            <div class="job-company">
-                                🏢 {job['company']}
-                            </div>
-                            <div class="job-meta">
-                                <span class="job-date">
-                                    📅 Adicionado em {job['created_at'][:10] if job.get('created_at') else 'N/A'}
-                                </span>
-                                <a href="{job['link']}" target="_blank" class="job-link" onclick="event.stopPropagation()">
-                                    🔗 Ver vaga
-                                </a>
-                            </div>
-                        </div>
-                        """ for job in results)}
-                    </div>
-                    ''' if results else ('<div class="empty">Busque por vagas usando o campo acima</div>' if not word else '<div class="empty">Nenhuma vaga encontrada para "' + word + '"</div>')}
+                <!-- Navegação Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+                    <button class="tab-btn" onclick="switchTab('search')">🔍 Busca Rápida</button>
+                    <button class="tab-btn" onclick="switchTab('browse')">📋 Browse Jobs</button>
                 </div>
             </div>
             
-            <script>
-                // Auto-refresh a cada 5 segundos se houver operação em andamento
+            <!-- Mensagens de Feedback -->
+            <div class="alerts">
+                {"<div class='alert-error'>" + error + "</div>" if error else ""}
+                {"<div class='alert-success'>" + success_msg + "</div>" if success_msg else ""}
+            </div>
+
+            <!-- TAB 1: DASHBOARD -->
+            <div id="tab-dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-val">{stats['total_jobs']}</div>
+                        <div class="stat-label">Vagas Total</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val">{stats['total_companies']}</div>
+                        <div class="stat-label">Empresas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-val">2</div>
+                        <div class="stat-label">Sites Monitorados</div>
+                    </div>
+                </div>
+                
+                <h3>☁️ Gerenciamento de Dados</h3>
+                <div class="controls-section">
+                    <form method="post" style="display:inline;">
+                        <input type="hidden" name="action" value="update">
+                        <button type="submit" class="btn btn-success" {'disabled' if scraper_status["running"] or loader_status["running"] else ''}>
+                            🔄 Atualizar Vagas (Completo)
+                        </button>
+                    </form>
+                    <form method="post" style="display:inline;">
+                        <input type="hidden" name="action" value="scrape">
+                        <button type="submit" class="btn btn-secondary" {'disabled' if scraper_status["running"] else ''}>
+                            📥 Apenas Scrape
+                        </button>
+                    </form>
+                    <form method="post" style="display:inline;">
+                        <input type="hidden" name="action" value="load">
+                        <button type="submit" class="btn btn-secondary" {'disabled' if loader_status["running"] else ''}>
+                            💾 Apenas Load (DB)
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB 2: SEARCH (Formulário POST padrão) -->
+            <div id="tab-search" class="tab-content">
+                <form method="post" class="search-box">
+                    <input type="hidden" name="action" value="search">
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" name="word" placeholder="Digite tecnologias (ex: Python, React)..." value="{word}">
+                        <button type="submit" class="btn btn-primary">Buscar</button>
+                    </div>
+                </form>
+                
+                <div style="margin-top: 20px;">
+                    {f'''
+                    <div style="margin-bottom:10px; color:#888;">Encontradas {len(results)} vagas</div>
+                    {''.join(f"""
+                        <div class="job-card" onclick="window.open('{job['link']}', '_blank')">
+                            <h3>{job['title']}</h3>
+                            <div class="job-meta">
+                                <span>🏢 {job['company']}</span>
+                                <span>📅 {job['created_at'][:10] if job.get('created_at') else 'N/A'}</span>
+                                <span style="margin-left:auto; color:var(--primary);">🔗 Ver Vaga</span>
+                            </div>
+                        </div>
+                    """ for job in results)}
+                    ''' if results else '<div style="text-align:center; padding:40px; color:#666;">Use a busca acima para encontrar vagas específicas.</div>'}
+                </div>
+            </div>
+
+            <!-- TAB 3: BROWSE (Datatable JS) -->
+            <div id="tab-browse" class="tab-content">
+                <div class="filters-row">
+                    <input type="text" id="browseSearch" placeholder="Filtrar por título ou empresa..." onkeyup="if(event.key==='Enter') applyFilters()">
+                    <button onclick="applyFilters()" class="btn btn-primary">Filtrar</button>
+                    <button onclick="clearFilters()" class="btn btn-secondary">Limpar</button>
+                </div>
+                
+                <div id="browseList">
+                    <div style="text-align:center; padding:40px; color:#888;">Carregando dados...</div>
+                </div>
+                
+                <div id="pagination" class="pagination"></div>
+            </div>
+
+        </div>
+
+        <script>
+            // --- TAB SYSTEM ---
+            function switchTab(tabName) {{
+                // Hide all contents
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+                
+                // Show selected
+                document.getElementById('tab-' + tabName).classList.add('active');
+                
+                // Active button state - find button with specific onclick text or index
+                // Simplified: Just loop buttons and check text context or index
+                const buttons = document.querySelectorAll('.tab-btn');
+                if(tabName === 'dashboard') buttons[0].classList.add('active');
+                if(tabName === 'search') buttons[1].classList.add('active');
+                if(tabName === 'browse') {{
+                    buttons[2].classList.add('active');
+                    if(allJobs.length === 0) loadAllJobs(); // Load data on first view
+                }}
+                
+                // Save state
+                localStorage.setItem('activeTab', tabName);
+            }}
+
+            function initApp() {{
+                // Restore tab state or default to dashboard
+                // If search results exist (server side), go to search tab
+                const hasResults = { 'true' if results else 'false' };
+                const savedTab = localStorage.getItem('activeTab') || 'dashboard';
+                
+                if (hasResults) {{
+                    switchTab('search');
+                }} else {{
+                    switchTab(savedTab);
+                }}
+                
+                // Auto-refresh if running
                 {'setTimeout(() => location.reload(), 5000);' if scraper_status["running"] or loader_status["running"] else ''}
-            </script>
-        </body>
+            }}
+
+            // --- BROWSE LOGIC (Datatable) ---
+            let allJobs = [];
+            let filteredJobs = [];
+            let currentPage = 1;
+            const pageSize = 15;
+
+            async function loadAllJobs() {{
+                try {{
+                    const response = await fetch('/api/jobs');
+                    const data = await response.json();
+                    allJobs = data.jobs;
+                    filteredJobs = allJobs;
+                    renderBrowse();
+                }} catch (e) {{
+                    document.getElementById('browseList').innerHTML = '<div class="alert-error">Erro ao carregar dados.</div>';
+                }}
+            }}
+
+            function applyFilters() {{
+                const term = document.getElementById('browseSearch').value.toLowerCase();
+                filteredJobs = allJobs.filter(j => 
+                    j.title.toLowerCase().includes(term) || j.company.toLowerCase().includes(term)
+                );
+                currentPage = 1;
+                renderBrowse();
+            }}
+            
+            function clearFilters() {{
+                document.getElementById('browseSearch').value = '';
+                filteredJobs = allJobs;
+                currentPage = 1;
+                renderBrowse();
+            }}
+
+            function renderBrowse() {{
+                const start = (currentPage - 1) * pageSize;
+                const pageJobs = filteredJobs.slice(start, start + pageSize);
+                
+                if(pageJobs.length === 0) {{
+                    document.getElementById('browseList').innerHTML = '<div style="text-align:center; padding:40px;">Nenhuma vaga encontrada.</div>';
+                    document.getElementById('pagination').innerHTML = '';
+                    return;
+                }}
+                
+                let html = pageJobs.map(job => `
+                    <div class="job-card" onclick="window.open('${{job.link}}', '_blank')">
+                        <h3>${{job.title}}</h3>
+                        <div class="job-meta">
+                            <span>🏢 ${{job.company}}</span>
+                            <span>📅 ${{new Date(job.created_at).toLocaleDateString()}}</span>
+                            <span style="margin-left:auto; color:var(--primary);">🔗 Abrir</span>
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('browseList').innerHTML = html;
+                renderPagination();
+            }}
+
+            function renderPagination() {{
+                const totalPages = Math.ceil(filteredJobs.length / pageSize);
+                if(totalPages <= 1) {{
+                    document.getElementById('pagination').innerHTML = '';
+                    return;
+                }}
+                
+                let btns = '';
+                // Simple pagination logic (prev, current, next)
+                if(currentPage > 1) btns += `<button class="page-btn" onclick="goToPage(${{currentPage-1}})">«</button>`;
+                
+                // Show limited range
+                const start = Math.max(1, currentPage - 2);
+                const end = Math.min(totalPages, currentPage + 2);
+                
+                for(let i=start; i<=end; i++) {{
+                    btns += `<button class="page-btn ${{i===currentPage?'active':''}}" onclick="goToPage(${{i}})">${{i}}</button>`;
+                }}
+                
+                if(currentPage < totalPages) btns += `<button class="page-btn" onclick="goToPage(${{currentPage+1}})">»</button>`;
+                
+                document.getElementById('pagination').innerHTML = btns;
+            }}
+            
+            function goToPage(p) {{
+                currentPage = p;
+                renderBrowse();
+                document.getElementById('tab-browse').scrollIntoView({{behavior:'smooth'}});
+            }}
+        </script>
+    </body>
     </html>
     """
 
