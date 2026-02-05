@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Web API service
+  # Web API com scraper e loader integrados
   api:
     build:
       context: .
@@ -30,45 +30,6 @@ services:
       retries: 3
       start_period: 10s
 
-  # Scraper job (runs periodically)
-  scraper:
-    build:
-      context: .
-      target: development
-    container_name: job-scrapper-worker
-    volumes:
-      - .:/app
-      - ./lake:/app/lake
-      - ./output:/app/output
-      - ./logs:/app/logs
-    environment:
-      - PYTHONUNBUFFERED=1
-    networks:
-      - scrapper-network
-    # By default, don't start automatically - run manually or via cron
-    profiles:
-      - scraper
-    command: python app.py
-
-  # Loader job (loads scraped data into database)
-  loader:
-    build:
-      context: .
-      target: development
-    container_name: job-scrapper-loader
-    volumes:
-      - .:/app
-      - ./output:/app/output
-      - ./logs:/app/logs
-      - ./jobs.db:/app/jobs.db
-    environment:
-      - PYTHONUNBUFFERED=1
-    networks:
-      - scrapper-network
-    profiles:
-      - loader
-    command: python load.py
-
 networks:
   scrapper-network:
     driver: bridge
@@ -78,3 +39,5 @@ volumes:
   output:
   logs:
   database:
+
+
