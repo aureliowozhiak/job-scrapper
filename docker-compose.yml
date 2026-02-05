@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Web API service
+  api:
+    build:
+      context: .
+      target: development
+    container_name: job-scrapper-api
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Persistent volumes for data
+      - ./lake:/app/lake
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./jobs.db:/app/jobs.db
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    networks:
+      - scrapper-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/', timeout=5)" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Scraper job (runs periodically)
+  scraper:
+    build:
+      context: .
+      target: development
+    container_name: job-scrapper-worker
+    volumes:
+      - .:/app
+      - ./lake:/app/lake
+      - ./output:/app/output
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - scrapper-network
+    # By default, don't start automatically - run manually or via cron
+    profiles:
+      - scraper
+    command: python app.py
+
+  # Loader job (loads scraped data into database)
+  loader:
+    build:
+      context: .
+      target: development
+    container_name: job-scrapper-loader
+    volumes:
+      - .:/app
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./jobs.db:/app/jobs.db
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - scrapper-network
+    profiles:
+      - loader
+    command: python load.py
+
+networks:
+  scrapper-network:
+    driver: bridge
+
+volumes:
+  lake:
+  output:
+  logs:
+  database:
