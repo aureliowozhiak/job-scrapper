@@ -189,3 +189,124 @@ class TestTransform:
         jobs = transform.handleSkipTheDrive(soup)
         
         assert len(jobs) == 0
+    
+    def test_get_jobs_skipthedrive_returns_list(self, transform):
+        """Test that getJobs for skipthedrive returns correct data."""
+        html = """
+        <article class="post">
+            <h2 class="post-title"><a href="/job/1">Job 1</a></h2>
+            <div class="custom_fields_company_name_display_search_results">Company</div>
+            <time class="post-date" datetime="2024-01-01">Date</time>
+        </article>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        result = transform.getJobs("skipthedrive", soup)
+        
+        assert isinstance(result, list)
+        assert len(result) == 1
+    
+    def test_get_jobs_exception_in_handler(self, transform):
+        """Test getJobs when exception occurs inside match block."""
+        # Create a mock soup that will cause exception in handler
+        from unittest.mock import Mock, patch
+        
+        soup = BeautifulSoup("<html></html>", "html.parser")
+        
+        # Patch handleWeWorkRemotely to raise exception
+        with patch.object(transform, 'handleWeWorkRemotely', side_effect=Exception("Test error")):
+            result = transform.getJobs("weworkremotely", soup)
+            assert result == []
+    
+    def test_handle_weworkremotely_parsing_exception_in_loop(self, transform):
+        """Test handleWeWorkRemotely when exception occurs parsing individual job."""
+        html = """
+        <div class="new-listing-container">
+            <h2 class="new-listing__header__title">Valid Job</h2>
+            <div class="new-listing__company-name">Company A</div>
+            <div class="new-listing__company-headquarters">Remote</div>
+            <a href="/job/1">Link</a>
+        </div>
+        <div class="new-listing-container">
+            <h2 class="new-listing__header__title">Bad Job</h2>
+            <!-- Missing company and other fields -->
+        </div>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Mock find_all to raise exception for second item
+        from unittest.mock import Mock, patch
+        original_select = soup.select
+        
+        def mock_select(selector):
+            containers = original_select('.new-listing-container')
+            if len(containers) > 1:
+                # Make second container raise exception when accessing find_all
+                mock_container = Mock()
+                mock_container.select_one.side_effect = Exception("Parse error")
+                return [containers[0], mock_container]
+            return original_select(selector)
+        
+        with patch.object(soup, 'select', side_effect=mock_select):
+            # This should handle exception and continue
+            jobs = transform.handleWeWorkRemotely(soup)
+            # Should still get at least the valid job (or handle gracefully)
+            assert isinstance(jobs, list)
+    
+    def test_handle_weworkremotely_outer_exception(self, transform):
+        """Test handleWeWorkRemotely when outer exception occurs."""
+        from unittest.mock import Mock, patch
+        
+        soup = BeautifulSoup("<html></html>", "html.parser")
+        
+        # Make soup.select raise exception
+        with patch.object(soup, 'select', side_effect=Exception("Critical error")):
+            jobs = transform.handleWeWorkRemotely(soup)
+            # Should return empty list
+            assert jobs == []
+    
+    def test_handle_skipthedrive_parsing_exception_in_loop(self, transform):
+        """Test handleSkipTheDrive when exception occurs parsing individual article."""
+        html = """
+        <article class="post">
+            <h2 class="post-title"><a href="/job/1">Job 1</a></h2>
+            <div class="custom_fields_company_name_display_search_results">Company</div>
+            <time class="post-date" datetime="2024-01-01">Date</time>
+        </article>
+        <article class="post">
+            <h2 class="post-title"><a href="/job/2">Job 2</a></h2>
+            <div class="custom_fields_company_name_display_search_results">Company</div>
+            <time class="post-date" datetime="2024-01-02">Date</time>
+        </article>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Mock to raise exception on second article
+        from unittest.mock import Mock, patch
+        original_select = soup.select
+        
+        def mock_select(selector):
+            if selector == "article.post":
+                articles = original_select(selector)
+                if len(articles) > 1:
+                    # Make second article raise exception
+                    mock_article = Mock()
+                    mock_article.select_one.side_effect = Exception("Parse error")
+                    return [articles[0], mock_article]
+            return original_select(selector)
+        
+        with patch.object(soup, 'select', side_effect=mock_select):
+            jobs = transform.handleSkipTheDrive(soup)
+            # Should handle exception and continue
+            assert isinstance(jobs, list)
+    
+    def test_handle_skipthedrive_outer_exception(self, transform):
+        """Test handleSkipTheDrive when outer exception occurs."""
+        from unittest.mock import Mock, patch
+        
+        soup = BeautifulSoup("<html></html>", "html.parser")
+        
+        # Make soup.select raise exception
+        with patch.object(soup, 'select', side_effect=Exception("Critical error")):
+            jobs = transform.handleSkipTheDrive(soup)
+            # Should return empty list
+            assert jobs == []
