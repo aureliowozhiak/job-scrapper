@@ -2,6 +2,7 @@
 import re
 import scrapy
 
+
 class SkipTheDriveSpider(scrapy.Spider):
     name = "skipthedrive_jobs"
     allowed_domains = ["skipthedrive.com"]
@@ -9,10 +10,15 @@ class SkipTheDriveSpider(scrapy.Spider):
     # Search for 'data engineer'
     search_query = "data+engineer"
     start_urls = [f"https://www.skipthedrive.com/?s={search_query}"]
+    
+    # Limit pages to scrape
+    max_pages = 3  # Only scrape first 3 pages
+    pages_crawled = 0
 
     def start_requests(self):
         search_term = getattr(self, "query", "data+engineer")
         url = f"https://www.skipthedrive.com/?s={search_term}"
+        self.pages_crawled = 0
         yield scrapy.Request(url=url, callback=self.parse)
 
 
@@ -25,7 +31,13 @@ class SkipTheDriveSpider(scrapy.Spider):
             if re.match(r"https://www\.skipthedrive\.com/job/.+", full_url):
                 yield scrapy.Request(full_url, callback=self.parse_job)
 
-        # Pagination logic
+        # Pagination logic with limit
+        self.pages_crawled += 1
+        
+        if self.pages_crawled >= self.max_pages:
+            self.logger.info(f"Reached max pages limit ({self.max_pages})")
+            return
+        
         current_page = int(response.url.split("/page/")[1].split("/")[0]) if "/page/" in response.url else 1
         search_term = getattr(self, "query", "data+engineer")
         next_page = current_page + 1

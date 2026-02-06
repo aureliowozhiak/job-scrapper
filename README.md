@@ -1,244 +1,315 @@
-# job-scrapper
+# 🚀 Job Scrapper Pro v3.0
 
-🔍 Sistema automatizado de web scraping para vagas de emprego remotas em tecnologia, com foco em áreas de dados (Data Engineer, Data Scientist, ML Engineer, etc.).
+Modern job scraping application built with FastAPI, SQLAlchemy, and RQ (Redis Queue) for reliable background job processing.
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Flask](https://img.shields.io/badge/flask-3.1.1-green.svg)](https://flask.palletsprojects.com/)
-[![Scrapy](https://img.shields.io/badge/scrapy-2.13.3-red.svg)](https://scrapy.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## ✨ Features
 
-## ✨ Funcionalidades
+- **🔍 Multi-site Scraping**: Automated scraping from WeWorkRemotely and SkipTheDrive
+- **💾 Smart Data Management**: SQLAlchemy ORM with upsert capabilities
+- **⚡ Background Jobs**: Redis-backed job queue with RQ
+- **🎯 Data Validation**: Automatic link validation and cleanup
+- **🔄 Sync Analysis**: Compare local data with database before loading
+- **📊 Interactive Dashboard**: Web UI for monitoring and control
+- **🔧 REST API**: Full-featured API with auto-generated documentation
+- **🐳 Docker Ready**: Complete Docker Compose setup
 
-- 🕷️ **Web Scraping**: Coleta automatizada de vagas de múltiplos sites
-- 🗄️ **Banco de Dados**: Armazenamento em SQLite com deduplicação automática
-- 🌐 **API REST**: Interface JSON para busca de vagas
-- 🎨 **Interface Web Moderna**: Interface escura com controles integrados
-- 📊 **Logging Estruturado**: Monitoramento completo de operações
-- 🔄 **Retry Logic**: Requisições HTTP com tentativas automáticas
-- ⚡ **Controle em Tempo Real**: Scraping e loading via interface web
-- ✅ **Testes**: 99% de cobertura de código
-
-## 📂 Estrutura do Projeto
+## 🏗️ Architecture
 
 ```
-job-scrapper/
-├── api.py                 # API Flask (REST + Web UI + Scraper + Loader)
-├── app.py                 # Script ETL (executado pela API)
-├── load.py                # Carregamento no banco (executado pela API)
-├── endpoints.py           # Configuração de sites
-├── requirements.txt       # Dependências Python
-├── pytest.ini            # Configuração de testes
-│
-├── methods/              # Módulos ETL
-│   ├── extract.py        # Extração de dados (HTTP)
-│   ├── transform.py      # Transformação (parsing HTML)
-│   └── utils.py          # Utilitários
-│
-├── utils/                # Utilitários compartilhados
-│   └── logger.py         # Sistema de logging
-│
-├── jobfinder_bot/        # Projeto Scrapy
-│   └── spiders/
-│       └── skipthedrive.py
-│
-├── tests/                # Testes automatizados (41 testes)
-│   ├── test_extract.py
-│   ├── test_transform.py
-│   ├── test_api.py
-│   └── test_logger.py
-│
-├── lake/                 # Data lake (HTML bruto)
-├── output/               # JSONs processados
-├── logs/                 # Arquivos de log
-└── jobs.db               # Banco SQLite
+├── src/
+│   ├── api/          # FastAPI routes and application
+│   ├── core/         # Configuration and settings
+│   ├── database/     # SQLAlchemy models and repositories
+│   ├── jobs/         # RQ background tasks
+│   └── schemas/      # Pydantic validation schemas
+├── templates/        # Jinja2 templates
+├── data/            # Data directory (created automatically)
+│   ├── db/          # SQLite database
+│   ├── output/      # Scraped JSON files
+│   ├── lake/        # Raw HTML
+│   └── logs/        # Application logs
+└── worker.py        # RQ worker entry point
 ```
 
-## 🚀 Quick Start
-
-### 1. Preparar ambiente
+## 🐳 Quick Start with Docker (Recommended)
 
 ```bash
-# Clone o repositório
-git clone <repo-url>
-cd job-scrapper
+# 1. Copy environment config
+cp .env.example .env
 
-# Criar ambiente virtual
-python -m venv .venv
+# 2. Start all services
+docker-compose up -d
 
-# Ativar ambiente virtual
-# Linux/MacOS:
-source .venv/bin/activate
-# Windows:
-.venv\Scripts\activate
+# 3. Access the application
+# Web UI: http://localhost:8000
+# API Docs: http://localhost:8000/api/docs
+# RQ Dashboard: http://localhost:9181
+```
 
-# Instalar dependências
+**That's it!** See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for detailed Docker usage.
+
+## 💻 Local Development Setup
+
+### Prerequisites
+- Python 3.11+
+- Redis Server
+
+### Installation
+
+```bash
+# 1. Install dependencies
 pip install -r requirements.txt
+
+# 2. Start Redis
+docker run -d -p 6379:6379 redis:7-alpine
+# OR if installed locally: redis-server
+
+# 3. Initialize database
+python -c "from src.database.connection import init_db; init_db()"
+
+# 4. Start FastAPI (Terminal 1)
+python -m uvicorn src.api.main:app --reload
+
+# 5. Start RQ Worker (Terminal 2)
+python worker.py
 ```
 
-### 2. Executar aplicação
+Access at http://localhost:8000
 
+## 📖 Documentation
+
+- **[Docker Guide](DOCKER_GUIDE.md)** - Complete Docker setup and usage
+- **[Migration Complete](MIGRATION_COMPLETE.md)** - Full architecture documentation
+- **[Migration Plan](MIGRATION_PLAN.md)** - Migration strategy and roadmap
+- **[Enhancements Complete](ENHANCEMENTS_COMPLETE.md)** - Recent enhancements summary
+- **[WebSocket Guide](WEBSOCKET_GUIDE.md)** - Real-time updates integration
+- **[Test Coverage Plan](TEST_COVERAGE_PLAN.md)** - Comprehensive testing strategy
+- **[API Docs](http://localhost:8000/api/docs)** - Interactive API documentation (when running)
+
+## 🎯 Usage
+
+### Web Interface
+
+Visit http://localhost:8000 and use the dashboard to:
+- **Dashboard Tab**: View statistics and job overview
+- **Task Manager Tab**: 
+  - Trigger pipeline operations (Full Pipeline, Scrape, Load, Validate, Sync Check)
+  - Monitor real-time job queue status (queued, running, finished, failed)
+  - View and manage active jobs
+  - View failed jobs with error details
+  - Clear failed jobs from queue
+- **Browse Jobs Tab**: Search and filter all job listings
+
+### API Endpoints
+
+#### Job Search & Listing
 ```bash
-# Iniciar API (Web UI + Scraper + Loader integrados)
-python api.py
+# Search jobs
+GET /api/jobs/search?q=python&limit=50
+
+# List all jobs with filters
+GET /api/jobs/?company=Google&limit=100
+
+# Get statistics
+GET /api/jobs/stats
 ```
 
-### 3. Usar a aplicação
-
-Acesse `http://localhost:5000` e você verá:
-
-- 📊 **Dashboard** com estatísticas (total de vagas, empresas)
-- 🔄 **Botão "Atualizar Vagas"** - Executa scraping e loading automaticamente
-- 🔍 **Campo de Busca** - Pesquise vagas por palavra-chave
-- 📈 **Status em Tempo Real** - Monitore operações em andamento
-
-#### 3. Usar Scrapy (alternativa)
-
+#### Admin/Control
 ```bash
-cd jobfinder_bot
-scrapy crawl skipthedrive_jobs -a query="data+engineer" -o spider_output/skipthedrive.json
+# Trigger scraping
+POST /api/admin/scrape
+
+# Trigger full pipeline (scrape -> load -> validate)
+POST /api/admin/pipeline
+
+# Check job status
+GET /api/admin/job/{job_id}
+
+# Get queue status
+GET /api/admin/queue/status
 ```
 
-## 🔌 API
-
-### REST Endpoint
-
+#### Health Checks
 ```bash
-GET /positions?word=<termo>
+# Overall health
+GET /api/health
 
-# Exemplo:
-curl "http://localhost:5000/positions?word=python"
+# Database health
+GET /api/health/db
 
-# Resposta:
-{
-  "results": [
-    "https://weworkremotely.com/jobs/123",
-    "https://skipthedrive.com/job/456"
-  ]
-}
+# Redis health
+GET /api/health/redis
 ```
 
-### Endpoints de Controle (POST)
+## 🔧 Configuration
 
-- `POST /api/scrape` - Inicia o processo de scraping
-- `POST /api/load` - Inicia o carregamento no banco
-- `POST /api/update` - Executa scrape seguido de load
-- `GET /api/status` - Retorna status das operações e estatísticas
+Edit `.env` file (copy from `.env.example`):
 
-Exemplo:
-```bash
-curl -X POST http://localhost:5000/api/update
+```env
+# Application
+DEBUG=false
+
+# Server
+HOST=0.0.0.0
+PORT=8000
+
+# Database
+DATABASE_URL=sqlite:///./data/db/jobs.db
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Validation
+ENABLE_PRE_VALIDATION=true
+VALIDATION_SAMPLE_SIZE=100
 ```
 
-### Interface Web
+## 📊 Monitoring
 
-Acesse `http://localhost:5000` para buscar vagas visualmente.
+### RQ Dashboard
+When running with Docker, access the RQ Dashboard at http://localhost:9181 to monitor:
+- Queue status
+- Running jobs
+- Completed jobs
+- Failed jobs
+- Worker health
 
-## 🧪 Testes
-
+### Queue Status API
 ```bash
-# Executar todos os testes
+curl http://localhost:8000/api/admin/queue/status
+```
+
+## 🧪 Testing
+
+### Run All Tests
+```bash
+# Run all tests
 pytest
 
-# Com cobertura
-pytest --cov
+# With coverage report
+pytest --cov=src --cov=methods --cov=utils --cov-report=html
 
-# Apenas testes unitários
-pytest tests/test_extract.py tests/test_transform.py
-
-# Gerar relatório HTML
-pytest --cov --cov-report=html
+# View coverage report
+open htmlcov/index.html  # macOS
+xdg-open htmlcov/index.html  # Linux
+start htmlcov/index.html  # Windows
 ```
 
-## 📊 Sites Suportados
+### Test Categories
+```bash
+# Unit tests only
+pytest tests/unit/
 
-| Site           | Status  | Método                 |
-| -------------- | ------- | ---------------------- |
-| WeWorkRemotely | ✅ Ativo | BeautifulSoup          |
-| SkipTheDrive   | ✅ Ativo | BeautifulSoup + Scrapy |
+# Integration tests only
+pytest tests/integration/
 
-## 🔍 Queries Pré-configuradas
-
-O sistema busca automaticamente por 20 termos:
-- Data Analytics, Data Engineer, Data Scientist
-- Machine Learning Engineer, AI Engineer
-- Business Intelligence Analyst, BI Developer
-- ETL Developer, Big Data Engineer
-- E mais...
-
-(Ver `app.py` para lista completa)
-
-## 📝 Logs
-
-Os logs são salvos em `logs/`:
-
-- `job-scrapper-YYYY-MM-DD.log` - Todos os logs
-- `errors-YYYY-MM-DD.log` - Apenas erros
-
-Níveis de log:
-- **DEBUG**: Detalhes de operações
-- **INFO**: Eventos importantes
-- **WARNING**: Avisos
-- **ERROR**: Erros com stack trace
-
-## 🗃️ Banco de Dados
-
-### Schema
-
-```sql
-CREATE TABLE positions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    link TEXT NOT NULL UNIQUE,  -- Deduplicação
-    company TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+# Specific module
+pytest tests/test_load.py -v
+pytest tests/test_validate.py -v
 ```
 
-### Deduplicação
+### In Docker
+```bash
+docker-compose run --rm api pytest --cov=src --cov=methods --cov=utils
+```
 
-O sistema evita vagas duplicadas usando:
-- UNIQUE constraint no campo `link`
-- INSERT com tratamento de IntegrityError
-- Logs de duplicatas encontradas
+### Coverage Goals
+- **Target**: 95%+ coverage
+- **Critical modules**: 95%+ (load, validate, repositories, API)
+- **Utility modules**: 100% (utils, logger)
 
-## 📈 Melhorias Implementadas
+See [TEST_COVERAGE_PLAN.md](TEST_COVERAGE_PLAN.md) for detailed coverage strategy.
 
-- ✅ **Logging estruturado** com rotação diária
-- ✅ **Tratamento de erros robusto** com retry logic
-- ✅ **Testes automatizados** com pytest e coverage
-- ✅ **Deduplicação** de vagas no banco
-- ✅ **Docker** para deploy facilitado
-- ✅ **Type hints** Python 3.12+
-- ✅ **Documentação** completa
+## 📦 Technology Stack
 
-## 🛠️ Tecnologias
+- **FastAPI** - Modern web framework
+- **SQLAlchemy 2.0** - SQL toolkit and ORM
+- **RQ (Redis Queue)** - Background job processing
+- **Pydantic** - Data validation
+- **Redis** - Job queue backend
+- **Uvicorn** - ASGI server
+- **Jinja2** - Template engine
+- **BeautifulSoup4** - HTML parsing
+- **Scrapy** - Web scraping framework
 
-- **Python 3.12+**
-- **Flask 3.1.1** - Web framework
-- **Scrapy 2.13.3** - Framework de scraping
-- **BeautifulSoup4** - Parsing HTML
-- **Requests** - Cliente HTTP
-- **SQLite** - Banco de dados
-- **Pytest** - Framework de testes
-- **Docker** - Containerização
+## 🔄 Background Job Flow
 
-## 📄 Licença
+1. **Trigger**: API receives request to start a job
+2. **Enqueue**: Job is added to Redis queue with unique ID
+3. **Process**: RQ worker picks up the job and executes it
+4. **Monitor**: Check status via API or RQ Dashboard
+5. **Complete**: Results stored and available via API
 
-MIT License - veja LICENSE para detalhes.
+Jobs support:
+- ✅ Dependencies (pipeline execution)
+- ✅ Retries on failure
+- ✅ Timeout handling
+- ✅ Result persistence
 
-## 🤝 Contribuindo
+## 🚨 Troubleshooting
 
-1. Fork o projeto
-2. Crie sua feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+### Redis Connection Error
+```bash
+# Check if Redis is running
+redis-cli ping  # Should return PONG
 
-## 📞 Suporte
+# Start Redis with Docker
+docker run -d -p 6379:6379 redis:7-alpine
+```
 
-Para bugs ou sugestões, abra uma issue no repositório.
+### Worker Not Processing Jobs
+```bash
+# Check worker logs
+python worker.py
+
+# Check queue length
+redis-cli LLEN rq:queue:default
+```
+
+### Database Errors
+```bash
+# Reinitialize database
+rm data/db/jobs.db
+python -c "from src.database.connection import init_db; init_db()"
+```
+
+See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for more troubleshooting tips.
+
+## 📝 Development
+
+### Project Structure
+- `src/api/routes/` - Add new API endpoints here
+- `src/jobs/` - Add new background tasks here
+- `src/database/models.py` - Define database models
+- `src/schemas/` - Define Pydantic schemas
+- `templates/` - HTML templates
+
+### Adding a New Background Task
+
+1. Create task file in `src/jobs/task_*.py`
+2. Add enqueue method in `src/jobs/manager.py`
+3. Create API endpoint in `src/api/routes/admin.py`
+4. Test with RQ Dashboard
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## 📄 License
+
+MIT License
+
+## 🔗 Links
+
+- **Live Demo**: N/A
+- **API Documentation**: http://localhost:8000/api/docs (when running)
+- **RQ Dashboard**: http://localhost:9181 (when running with Docker)
 
 ---
 
-Feito com ❤️ para ajudar a encontrar vagas remotas em tech!
+**Built with ❤️ using FastAPI and modern Python practices**

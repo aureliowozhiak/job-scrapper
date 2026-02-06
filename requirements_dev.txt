@@ -1,0 +1,7 @@
+# Testing
+pytest==8.3.4
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+pytest-asyncio==0.24.0  # For testing async code (supports pytest 8.x)
+httpx==0.26.0  # Required for FastAPI TestClient
+

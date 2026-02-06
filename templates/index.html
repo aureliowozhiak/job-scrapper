@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <title>Job Scrapper</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            /* Deep Slate */
+            --bg-card: #1e293b;
+            /* Lighter Slate for elevation */
+            --primary: #38bdf8;
+            /* Bright Sky Blue */
+            --accent: #f43f5e;
+            /* Rose */
+            --text-main: #f8fafc;
+            /* Clean White */
+            --text-muted: #94a3b8;
+            /* Soft Slate */
+            --border: #334155;
+            /* Defined Border */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px 20px 20px;
+            /* No top padding */
+        }
+
+        /* Header Styles */
+        .app-header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+            /* Vertical padding only */
+            margin-bottom: 30px;
+            /* Remove border-radius and shadow to avoid 'narrow box' look */
+        }
+
+        .app-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .app-title h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #fff;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+            -webkit-animation: fadeIn 0.5s;
+            animation: fadeIn 0.5s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Dashboard Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-val {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Controls */
+        .controls-section {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-success {
+            background: #00c853;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #393e46;
+            color: #fff;
+        }
+
+        /* Job Card Styles */
+        .job-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .job-card:hover {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .job-card h3 {
+            color: var(--primary);
+            margin: 0 0 8px 0;
+            font-size: 18px;
+        }
+
+        .job-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Datatable Styles */
+        .filters-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .filters-row input {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: #fff;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 20px;
+        }
+
+        .page-btn {
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: #fff;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .page-btn.active {
+            background: var(--primary);
+            color: #1a1a2e;
+        }
+
+        .alerts {
+            margin: 20px 0;
+        }
+
+        .alert-success {
+            background: rgba(0, 200, 83, 0.2);
+            color: #00c853;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .alert-error {
+            background: rgba(255, 82, 82, 0.2);
+            color: #ff5252;
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body onload="initApp()">
+    <div class="container">
+
+        <!-- Header Unificado -->
+        <div class="app-header">
+            <div class="app-title-row">
+                <div class="app-title">
+                    <h1 style="display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-robot" style="color:var(--accent);"></i>
+                        Job Scrapper Pro
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Navegação Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="fas fa-chart-line"></i>
+                    Dashboard</button>
+                <button class="tab-btn" onclick="switchTab('tasks')"><i class="fas fa-tasks"></i> Task Manager</button>
+                <button class="tab-btn" onclick="switchTab('browse')"><i class="fas fa-briefcase"></i> Browse
+                    Jobs</button>
+            </div>
+        </div>
+        <!-- No search tab button here -->
+
+        <!-- Mensagens de Feedback -->
+        <div class="alerts">
+            {% if error %}
+            <div class='alert-error'>{{ error }}</div>
+            {% endif %}
+            {% if success_msg %}
+            <div class='alert-success'>{{ success_msg }}</div>
+            {% endif %}
+        </div>
+
+        <!-- TAB 1: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-val">{{ stats.total_jobs }}</div>
+                    <div class="stat-label">Vagas Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val">{{ stats.total_companies }}</div>
+                    <div class="stat-label">Empresas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val">2</div>
+                    <div class="stat-label">Sites Monitorados</div>
+                </div>
+            </div>
+
+
+
+            <!-- Sync Status Panel -->
+            {% if sync_status and sync_status.checked and sync_status.data %}
+            <div
+                style="margin-top: 20px; background: #2d3436; padding: 15px; border-radius: 8px; border-left: 4px solid #6c5ce7;">
+                <h4 style="margin-top:0; color: #a29bfe;">⚡ Status de Sincronização (Local vs DB)</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+                    <div>
+                        <div style="font-size: 24px; font-weight: bold; color: #fff;">{{ sync_status.data.total_local }}
+                        </div>
+                        <div style="font-size: 12px; color: #b2bec3;">Total Local (JSON)</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: bold; color: #00b894;">{{
+                            sync_status.data.new_to_insert }}</div>
+                        <div style="font-size: 12px; color: #b2bec3;">Novas para Inserir</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: bold; color: #74b9ff;">{{
+                            sync_status.data.already_in_db }}</div>
+                        <div style="font-size: 12px; color: #b2bec3;">Já no Banco</div>
+                    </div>
+                </div>
+                {% if sync_status.data.sample_new %}
+                <div style="margin-top:10px; font-size:12px; color:#dfe6e9;">Exemplos de novas: {{ ",
+                    ".join(sync_status.data.sample_new) }}...</div>
+                {% endif %}
+                <div style="margin-top: 10px; font-size: 11px; color: #636e72; text-align: right;">Última verificação:
+                    {{ sync_status.last_check }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- TAB 3: TASK MANAGER -->
+        <div id="tab-tasks" class="tab-content">
+            <h3>Task Lifecycle Management</h3>
+
+            <!-- Task Trigger Actions -->
+            <div class="controls-section"
+                style="margin-bottom: 20px; text-align: center; padding: 40px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px dashed var(--border);">
+                <form method="post" action="/" style="display:inline;">
+                    <input type="hidden" name="action" value="update">
+                    <button type="submit" class="btn btn-success" style="padding: 15px 40px; font-size: 18px;" {% if
+                        current_status.scraper.running or current_status.loader.running %}disabled{% endif %}>
+                        <i class="fas fa-bolt" style="margin-right: 10px;"></i> Run Full Pipeline
+                    </button>
+                </form>
+                <p style="margin-top: 20px; color: var(--text-muted); font-size: 14px;">
+                    This will automatically <strong>Scrape</strong> new data, <strong>Load</strong> it into the
+                    database, and <strong>Validate</strong> all links.
+                </p>
+            </div>
+
+            <div class="stats-grid" style="margin-bottom: 20px;">
+                <div class="stat-card">
+                    <div class="stat-val" id="queue-queued">0</div>
+                    <div class="stat-label">Queued</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="queue-started">0</div>
+                    <div class="stat-label">Running</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="queue-finished">0</div>
+                    <div class="stat-label">Finished</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="queue-failed">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+            </div>
+
+            <!-- Queue Management Actions -->
+            <div class="controls-section" style="margin-bottom: 20px;">
+                <button onclick="refreshTaskStatus()" class="btn btn-primary"><i class="fas fa-sync"></i> Refresh
+                    Status</button>
+                <button onclick="clearFailedJobs()" class="btn btn-secondary" id="clear-failed-btn"><i
+                        class="fas fa-trash"></i> Clear Failed Jobs</button>
+            </div>
+
+            <!-- Active Jobs Section -->
+            <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h4 style="margin-top: 0;">Active Jobs</h4>
+                <div id="active-jobs-list">
+                    <div style="text-align:center; padding:20px; color:#888;">No active jobs</div>
+                </div>
+            </div>
+
+            <!-- Failed Jobs Section -->
+            <div style="background: var(--bg-card); padding: 20px; border-radius: 12px;">
+                <h4 style="margin-top: 0;">Failed Jobs</h4>
+                <div id="failed-jobs-list">
+                    <div style="text-align:center; padding:20px; color:#888;">No failed jobs</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: BROWSE (Datatable JS) -->
+        <div id="tab-browse" class="tab-content">
+            <div class="filters-row">
+                <input type="text" id="browseSearch" placeholder="Filtrar por título ou empresa..."
+                    onkeyup="if(event.key==='Enter') applyFilters()">
+                <button onclick="applyFilters()" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+                <button onclick="clearFilters()" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</button>
+            </div>
+
+            <div id="browseList">
+                <div style="text-align:center; padding:40px; color:#888;">Carregando dados...</div>
+            </div>
+
+            <div id="pagination" class="pagination"></div>
+        </div>
+
+    </div><!-- End Container -->
+
+    <script>
+        // --- TAB SYSTEM ---
+        function switchTab(tabName) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            // Disconnect WebSocket when leaving tasks tab
+            if (taskWebSocket && tabName !== 'tasks') {
+                disconnectTaskWebSocket();
+            }
+
+            // Show selected
+            document.getElementById('tab-' + tabName).classList.add('active');
+
+            // Active button state
+            const buttons = document.querySelectorAll('.tab-btn');
+            if (tabName === 'dashboard') buttons[0].classList.add('active');
+            if (tabName === 'tasks') {
+                buttons[1].classList.add('active');
+                connectTaskWebSocket();
+                refreshTaskStatus(); // Initial load
+            }
+            if (tabName === 'browse') {
+                buttons[2].classList.add('active');
+                if (allJobs.length === 0) loadAllJobs(); // Load data on first view
+            }
+
+            // Save state
+            localStorage.setItem('activeTab', tabName);
+        }
+
+        function initApp() {
+            // Restore tab state or default to dashboard
+            const savedTab = localStorage.getItem('activeTab') || 'dashboard';
+            switchTab(savedTab === 'search' ? 'dashboard' : savedTab);
+
+            // Connect to WebSocket if Tasks tab is active or just connect always for badges
+            connectTaskWebSocket();
+        }
+
+        // --- TASK MANAGER ---
+        let taskWebSocket = null;
+
+        function connectTaskWebSocket() {
+            if (taskWebSocket && taskWebSocket.readyState === WebSocket.OPEN) {
+                return; // Already connected
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/status`;
+
+            taskWebSocket = new WebSocket(wsUrl);
+
+            taskWebSocket.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'queue_status') {
+                    updateQueueStatus(data.data);
+                }
+            };
+
+            taskWebSocket.onerror = function (error) {
+                console.error('WebSocket error:', error);
+            };
+
+            taskWebSocket.onclose = function () {
+                console.log('WebSocket closed');
+                // Don't auto-reconnect - only reconnect when tab is active
+            };
+        }
+
+        function disconnectTaskWebSocket() {
+            if (taskWebSocket) {
+                taskWebSocket.close();
+                taskWebSocket = null;
+            }
+        }
+
+        function updateQueueStatus(status) {
+            // Update stats
+            document.getElementById('queue-queued').textContent = status.queued || 0;
+            document.getElementById('queue-started').textContent = status.started || 0;
+            document.getElementById('queue-finished').textContent = status.finished || 0;
+            document.getElementById('queue-failed').textContent = status.failed || 0;
+
+            document.getElementById('queue-failed').textContent = status.failed || 0;
+
+            // Update active jobs list
+            updateActiveJobs(status.started_jobs || []);
+
+            // Update failed jobs list
+            updateFailedJobs(status.failed_jobs || []);
+        }
+
+        async function updateActiveJobs(jobIds) {
+            const container = document.getElementById('active-jobs-list');
+
+            if (jobIds.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No active jobs</div>';
+                return;
+            }
+
+            let html = '';
+            for (const jobId of jobIds) {
+                try {
+                    const response = await fetch(`/api/admin/job/${jobId}`);
+                    const job = await response.json();
+
+                    html += `
+                        <div class="job-card" style="cursor: default; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 16px;">${jobId}</h3>
+                                <div class="job-meta">
+                                    <span>Status: ${job.status}</span>
+                                    ${job.started_at ? `<span>Started: ${new Date(job.started_at).toLocaleString()}</span>` : ''}
+                                </div>
+                            </div>
+                            <button onclick="cancelJob('${jobId}')" class="btn btn-secondary" style="padding: 8px 16px;"><i class="fas fa-stop"></i> Cancel</button>
+                        </div>
+                    `;
+                } catch (e) {
+                    console.error('Error fetching job', jobId, e);
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        async function updateFailedJobs(jobIds) {
+            const container = document.getElementById('failed-jobs-list');
+
+            if (jobIds.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No failed jobs</div>';
+                return;
+            }
+
+            let html = '';
+            for (const jobId of jobIds) {
+                try {
+                    const response = await fetch(`/api/admin/job/${jobId}`);
+                    const job = await response.json();
+
+                    html += `
+                        <div class="job-card" style="cursor: default; border-color: #ff5252;">
+                            <h3 style="margin: 0; font-size: 16px; color: #ff5252;">${jobId}</h3>
+                            <div class="job-meta">
+                                <span>Failed at: ${job.ended_at ? new Date(job.ended_at).toLocaleString() : 'N/A'}</span>
+                            </div>
+                            ${job.exc_info ? `<details style="margin-top: 10px; font-size: 12px; color: #ff8a80;">
+                                <summary style="cursor: pointer;">Error Details</summary>
+                                <pre style="margin-top: 5px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow-x: auto;">${job.exc_info}</pre>
+                            </details>` : ''}
+                        </div>
+                    `;
+                } catch (e) {
+                    console.error('Error fetching job', jobId, e);
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        async function refreshTaskStatus() {
+            try {
+                const response = await fetch('/api/admin/queue/status');
+                const status = await response.json();
+                updateQueueStatus(status);
+            } catch (e) {
+                alert('Error refreshing status: ' + e.message);
+            }
+        }
+
+        async function cancelJob(jobId) {
+            if (!confirm(`Cancel job ${jobId}?`)) return;
+
+            try {
+                const response = await fetch(`/api/admin/job/${jobId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    alert('Job cancelled');
+                    refreshTaskStatus();
+                } else {
+                    alert('Failed to cancel job');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function clearFailedJobs() {
+            if (!confirm('Clear all failed jobs?')) return;
+
+            try {
+                const response = await fetch('/api/admin/queue/failed', { method: 'DELETE' });
+                if (response.ok) {
+                    alert('Failed jobs cleared');
+                    refreshTaskStatus();
+                } else {
+                    alert('Failed to clear jobs');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // --- BROWSE LOGIC (Datatable) ---
+        let allJobs = [];
+        let filteredJobs = [];
+        let currentPage = 1;
+        const pageSize = 15;
+
+        async function loadAllJobs() {
+            try {
+                // Fixed trailing slash to match FastAPI route exactly
+                const response = await fetch('/api/jobs/');
+                const data = await response.json();
+                allJobs = data.jobs;
+                filteredJobs = allJobs;
+                renderBrowse();
+            } catch (e) {
+                document.getElementById('browseList').innerHTML = '<div class="alert-error">Erro ao carregar dados.</div>';
+            }
+        }
+
+        function applyFilters() {
+            const term = document.getElementById('browseSearch').value.toLowerCase();
+            filteredJobs = allJobs.filter(j =>
+                j.title.toLowerCase().includes(term) || j.company.toLowerCase().includes(term)
+            );
+            currentPage = 1;
+            renderBrowse();
+        }
+
+        function clearFilters() {
+            document.getElementById('browseSearch').value = '';
+            filteredJobs = allJobs;
+            currentPage = 1;
+            renderBrowse();
+        }
+
+        function renderBrowse() {
+            const start = (currentPage - 1) * pageSize;
+            const pageJobs = filteredJobs.slice(start, start + pageSize);
+
+            if (pageJobs.length === 0) {
+                document.getElementById('browseList').innerHTML = '<div style="text-align:center; padding:40px;">Nenhuma vaga encontrada.</div>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            let html = pageJobs.map(job => `
+                <div class="job-card" onclick="window.open('${job.link}', '_blank')">
+                    <h3>${job.title}</h3>
+                    <div class="job-meta">
+                        <span><i class="fas fa-building"></i> ${job.company}</span>
+                        <span><i class="fas fa-calendar"></i> ${new Date(job.created_at).toLocaleDateString()}</span>
+                        <span style="margin-left:auto; color:var(--primary);"><i class="fas fa-external-link-alt"></i> Open</span>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('browseList').innerHTML = html;
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredJobs.length / pageSize);
+            if (totalPages <= 1) {
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            let btns = '';
+            // Previous
+            btns += `<button class="page-btn" onclick="currentPage--; renderBrowse()" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
+
+            // Numbers
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
+            }
+
+            // Next
+            btns += `<button class="page-btn" onclick="currentPage++; renderBrowse()" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+
+            document.getElementById('pagination').innerHTML = btns;
+        }
+    </script>
+</body>
+
+</html>

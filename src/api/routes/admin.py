@@ -1,0 +1,107 @@
+"""Admin and control routes for managing scraping jobs."""
+from fastapi import APIRouter, HTTPException
+from typing import List
+from src.jobs.manager import job_manager
+from src.schemas.status import JobStatusResponse, PipelineResponse, QueueStatusResponse
+
+router = APIRouter()
+
+
+@router.post("/scrape", response_model=JobStatusResponse)
+async def trigger_scrape():
+    """Trigger scraping job."""
+    try:
+        job_id = job_manager.enqueue_scraper()
+        return JobStatusResponse(
+            job_id=job_id,
+            message="Scraping job enqueued",
+            status="queued"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue job: {str(e)}")
+
+
+@router.post("/load", response_model=JobStatusResponse)
+async def trigger_load():
+    """Trigger loading job."""
+    try:
+        job_id = job_manager.enqueue_loader()
+        return JobStatusResponse(
+            job_id=job_id,
+            message="Loading job enqueued",
+            status="queued"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue job: {str(e)}")
+
+
+@router.post("/validate", response_model=JobStatusResponse)
+async def trigger_validate():
+    """Trigger validation job."""
+    try:
+        job_id = job_manager.enqueue_validator()
+        return JobStatusResponse(
+            job_id=job_id,
+            message="Validation job enqueued",
+            status="queued"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue job: {str(e)}")
+
+
+@router.post("/sync-check", response_model=JobStatusResponse)
+async def trigger_sync_check():
+    """Trigger sync check job."""
+    try:
+        job_id = job_manager.enqueue_sync_check()
+        return JobStatusResponse(
+            job_id=job_id,
+            message="Sync check job enqueued",
+            status="queued"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue job: {str(e)}")
+
+
+@router.post("/pipeline", response_model=PipelineResponse)
+async def trigger_pipeline():
+    """Trigger full pipeline (scrape -> load -> validate)."""
+    try:
+        job_ids = job_manager.enqueue_pipeline()
+        return PipelineResponse(
+            job_ids=job_ids,
+            message="Pipeline enqueued",
+            steps=["scraper", "loader", "validator"]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue pipeline: {str(e)}")
+
+
+@router.get("/job/{job_id}", response_model=dict)
+async def get_job_status(job_id: str):
+    """Get status of a specific job."""
+    status = job_manager.get_job_status(job_id)
+    return status
+
+
+@router.get("/queue/status", response_model=QueueStatusResponse)
+async def get_queue_status():
+    """Get overall queue status."""
+    status = job_manager.get_all_job_statuses()
+    return QueueStatusResponse(**status)
+
+
+@router.delete("/job/{job_id}")
+async def cancel_job(job_id: str):
+    """Cancel a running job."""
+    success = job_manager.cancel_job(job_id)
+    if success:
+        return {"message": f"Job {job_id} cancelled"}
+    raise HTTPException(status_code=404, detail="Job not found or cannot be cancelled")
+
+
+@router.delete("/queue/failed")
+async def clear_failed_jobs():
+    """Clear all failed jobs from the queue."""
+    job_manager.clear_failed_jobs()
+    return {"message": "Failed jobs cleared"}
