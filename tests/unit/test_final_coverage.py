@@ -9,7 +9,7 @@ def test_scraper_error_handling():
     """Test scraper error path."""
     from src.jobs.task_scraper import task_scraper
     
-    with patch('src.etl.scraper.run_scraper', side_effect=Exception("Scraper error")):
+    with patch('src.etl.scrapy_runner.run_integrated_scraper', side_effect=Exception("Scraper error")):
         result = task_scraper()
         assert result["status"] == "error"
         assert "error" in result

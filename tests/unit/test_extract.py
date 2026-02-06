@@ -42,10 +42,14 @@ class TestExtract:
     
     def test_successful_request(self, extract):
         """Test successful HTTP request."""
-        with patch.object(extract.session, 'get') as mock_get:
+        with patch.object(extract.session, 'get') as mock_get, \
+             patch('src.etl.extract.time.sleep'), \
+             patch('src.etl.extract.random.uniform', return_value=0.1):
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.text = "<html>Job listings</html>"
+            mock_response.headers = {'Content-Type': 'text/html'}
+            mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
             
             response = extract._make_request_with_retry("https://test.com")
@@ -57,11 +61,16 @@ class TestExtract:
     def test_request_with_retry(self, extract):
         """Test retry logic on connection error."""
         with patch.object(extract.session, 'get') as mock_get, \
-             patch('src.etl.extract.time.sleep'):
+             patch('src.etl.extract.time.sleep'), \
+             patch('src.etl.extract.random.uniform', return_value=0.1):
+            success_response = Mock(status_code=200, text="<html>Success</html>")
+            success_response.headers = {'Content-Type': 'text/html'}
+            success_response.raise_for_status = Mock()
+            
             mock_get.side_effect = [
                 requests.ConnectionError(),
                 requests.ConnectionError(),
-                Mock(status_code=200, text="<html>Success</html>")
+                success_response
             ]
             
             response = extract._make_request_with_retry("https://test.com")
@@ -72,7 +81,8 @@ class TestExtract:
     def test_request_max_retries_exceeded(self, extract):
         """Test that exception is raised after max retries."""
         with patch.object(extract.session, 'get') as mock_get, \
-             patch('src.etl.extract.time.sleep'):
+             patch('src.etl.extract.time.sleep'), \
+             patch('src.etl.extract.random.uniform', return_value=0.1):
             mock_get.side_effect = requests.ConnectionError()
             
             with pytest.raises(requests.RequestException):
@@ -89,6 +99,8 @@ class TestExtract:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.text = "<html>Job listings</html>"
+            mock_response.headers = {'Content-Type': 'text/html'}
+            mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
             
             mock_file = MagicMock()
@@ -103,10 +115,14 @@ class TestExtract:
     def test_extract_data_skips_inactive_sites(self, extract):
         """Test that inactive sites are skipped."""
         with patch.object(extract.session, 'get') as mock_get, \
+             patch('builtins.open', create=True), \
              patch('src.etl.extract.time.sleep'), \
              patch('src.etl.extract.random.uniform', return_value=0.1):
             mock_response = Mock()
             mock_response.status_code = 200
+            mock_response.text = "<html>Test</html>"
+            mock_response.headers = {'Content-Type': 'text/html'}
+            mock_response.raise_for_status = Mock()
             mock_get.return_value = mock_response
             
             # Should only call for active site
@@ -132,9 +148,13 @@ class TestExtract:
         with patch.object(extract.session, 'get') as mock_get, \
              patch('src.etl.extract.time.sleep'), \
              patch('src.etl.extract.random.uniform', return_value=0.1):
+            success_response = Mock(status_code=200, text="<html>Success</html>")
+            success_response.headers = {'Content-Type': 'text/html'}
+            success_response.raise_for_status = Mock()
+            
             mock_get.side_effect = [
                 requests.Timeout(),
-                Mock(status_code=200, text="<html>Success</html>")
+                success_response
             ]
             
             response = extract._make_request_with_retry("https://test.com")

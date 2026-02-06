@@ -26,7 +26,7 @@ class TestTaskModules:
         from src.jobs.task_sync import task_sync_check
         assert callable(task_sync_check)
     
-    @patch('src.etl.scraper.run_scraper')
+    @patch('src.etl.scrapy_runner.run_integrated_scraper')
     def test_task_scraper_execution(self, mock_scraper):
         """Test scraper task executes scraper module."""
         from src.jobs.task_scraper import task_scraper

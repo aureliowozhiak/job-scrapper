@@ -150,6 +150,7 @@ def test_get_all_job_statuses(job_manager_mock):
         MockFailed.return_value = mock_failed_reg
         
         job_manager_mock.queue.__len__ = Mock(return_value=2)
+        job_manager_mock.queue.get_job_ids = Mock(return_value=["q-job-1", "q-job-2"])
         
         statuses = job_manager_mock.get_all_job_statuses()
         

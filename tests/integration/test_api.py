@@ -149,7 +149,6 @@ def test_root_renders_html(client):
 
 
 def test_browse_redirects(client):
-    """Test that /browse redirects to root."""
+    """Test that /browse returns the browse page."""
     response = client.get("/browse", follow_redirects=False)
-    assert response.status_code in [301, 302, 303, 307, 308]
-    assert response.headers["location"] == "/"
+    assert response.status_code == 200

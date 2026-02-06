@@ -103,11 +103,12 @@ def test_models_position_repr():
 def test_load_module_execution_coverage():
     """Test load module key paths."""
     from src.etl import load
+    from src.core.config import settings
     
     # Test configuration values
-    assert load.ENABLE_PRE_VALIDATION in [True, False]
+    assert settings.enable_pre_validation in [True, False]
     assert load.PRE_VALIDATION_SAMPLE_SIZE > 0
-    assert load.output_directory == "output"
+    assert load.output_directory == "data/output"
 
 
 def test_validate_module_functions():

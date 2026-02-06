@@ -180,7 +180,7 @@ class TestExactMissingLines:
         mock_file.return_value.read.return_value = '[[]]'
         
         # Return mix: list and dict (no validation - disable it)
-        with patch('src.etl.load.ENABLE_PRE_VALIDATION', False):
+        with patch('src.core.config.settings.enable_pre_validation', False):
             mock_c = MagicMock()
             mock_cur = MagicMock()
             mock_conn.return_value = mock_c
@@ -193,12 +193,12 @@ class TestExactMissingLines:
                 result = run_load_process()
                 assert result['processed'] >= 0
     
-    # task_scraper.py - no longer has legacy code, remove this test
+    # task_scraper.py - updated to use scrapy_runner
     def test_scraper_new_implementation(self):
         """Test new scraper implementation."""
         from src.jobs.task_scraper import task_scraper
         
-        with patch('src.etl.scraper.run_scraper', return_value={"total_jobs": 10}):
+        with patch('src.etl.scrapy_runner.run_integrated_scraper', return_value={"total_jobs": 10}):
             result = task_scraper()
             assert result["status"] == "completed"
             assert "stats" in result

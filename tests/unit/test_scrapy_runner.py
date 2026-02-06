@@ -72,7 +72,7 @@ class TestRunScrapySpiderSubprocess:
         mock_exists.return_value = True
         mock_stat.return_value = Mock(st_size=1000)
         
-        result = run_scrapy_spider_subprocess("test_spider", "test query", "/tmp/out.json")
+        result = run_scrapy_spider_subprocess("test_spider", "/tmp/out.json", query="test query")
         
         assert result is True
         mock_run.assert_called_once()
@@ -83,7 +83,7 @@ class TestRunScrapySpiderSubprocess:
         import subprocess
         mock_run.side_effect = subprocess.TimeoutExpired("scrapy", 180)
         
-        result = run_scrapy_spider_subprocess("test_spider", "test query", "/tmp/out.json")
+        result = run_scrapy_spider_subprocess("test_spider", "/tmp/out.json", query="test query")
         
         assert result is False
     
@@ -92,7 +92,7 @@ class TestRunScrapySpiderSubprocess:
         """Test spider failure handling."""
         mock_run.return_value = Mock(returncode=1, stderr="Error message")
         
-        result = run_scrapy_spider_subprocess("test_spider", "test query", "/tmp/out.json")
+        result = run_scrapy_spider_subprocess("test_spider", "/tmp/out.json", query="test query")
         
         assert result is False
 
