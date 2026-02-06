@@ -4,16 +4,17 @@ import sqlite3
 import json
 import os
 from pathlib import Path
+from src.core.config import settings
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 # Configuração
-ENABLE_PRE_VALIDATION = os.getenv("ENABLE_PRE_VALIDATION", "true").lower() == "true"
-PRE_VALIDATION_SAMPLE_SIZE = int(os.getenv("PRE_VALIDATION_SAMPLE_SIZE", "100"))
+ENABLE_PRE_VALIDATION = settings.enable_pre_validation
+PRE_VALIDATION_SAMPLE_SIZE = settings.pre_validation_sample_size
 
 # Diretórios
-output_directory = "output"
+output_directory = str(settings.output_path)
 
 def get_current_json_directory():
     """Get current date's JSON directory."""
@@ -24,7 +25,19 @@ def get_current_json_directory():
 
 def get_db_connection():
     """Get connection to SQLite DB."""
-    conn = sqlite3.connect("jobs.db")
+    db_url = settings.database_url
+    db_path = db_url.replace("sqlite:///", "").replace("sqlite://", "")
+    
+    # Handle relative paths for SQLite
+    if db_path.startswith("./"):
+        db_path = os.path.join(os.getcwd(), db_path[2:])
+    elif not os.path.isabs(db_path):
+        db_path = os.path.join(os.getcwd(), db_path)
+        
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -37,6 +50,7 @@ def setup_database(cursor):
             title TEXT NOT NULL,
             link TEXT NOT NULL UNIQUE,
             company TEXT NOT NULL,
+            source TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -55,6 +69,10 @@ def setup_database(cursor):
         logger.info("Migrating database: Adding updated_at column")
         cursor.execute("ALTER TABLE positions ADD COLUMN updated_at TIMESTAMP")
         cursor.execute("UPDATE positions SET updated_at = datetime('now') WHERE updated_at IS NULL")
+
+    if "source" not in columns:
+        logger.info("Migrating database: Adding source column")
+        cursor.execute("ALTER TABLE positions ADD COLUMN source TEXT")
     
     # Criar índices
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_title ON positions(title)")
@@ -156,7 +174,7 @@ def run_load_process():
         jobs_to_process = all_jobs
         pre_validation_rejected = 0
         
-        if ENABLE_PRE_VALIDATION and len(all_jobs) > 0:
+        if len(all_jobs) > 0:
             try:
                 from src.etl.validate import validate_json_jobs
                 
@@ -192,6 +210,7 @@ def run_load_process():
                 title = position.get("title", "").strip()
                 link = str(position.get("link", "")).strip()
                 company = position.get("company", "").strip()
+                source = position.get("source", "unknown").strip()
                 
                 if not title or not link or not company or link == "N/A":
                     stats["errors"] += 1
@@ -201,8 +220,8 @@ def run_load_process():
                 
                 try:
                     cursor.execute(
-                        "INSERT INTO positions (title, link, company, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-                        (title, link, company, now, now)
+                        "INSERT INTO positions (title, link, company, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                        (title, link, company, source, now, now)
                     )
                     stats["inserted"] += 1
                 except sqlite3.IntegrityError:

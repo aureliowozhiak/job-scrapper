@@ -39,18 +39,21 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 20px 20px 20px;
-            /* No top padding */
+            padding: 40px 20px;
+            /* Balanced padding on all sides */
         }
 
         /* Header Styles */
         .app-header {
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
-            padding: 20px 0;
-            /* Vertical padding only */
+            padding: 30px 40px;
+            /* Significant horizontal breathing room */
             margin-bottom: 30px;
-            /* Remove border-radius and shadow to avoid 'narrow box' look */
+            border-radius: 20px;
+            /* Sophisticated rounded corners */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
         }
 
         .app-title-row {
@@ -62,8 +65,22 @@
 
         .app-title h1 {
             margin: 0;
-            font-size: 24px;
+            font-size: 28px;
+            /* Slightly larger */
+            letter-spacing: -0.5px;
             color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            /* More space between icon and text */
+        }
+
+        .app-title i {
+            color: var(--primary);
+            /* Sky Blue accent for the icon */
+            font-size: 32px;
+            /* Bigger icon */
+            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.3));
         }
 
         /* Tabs */
@@ -171,70 +188,207 @@
         }
 
         .btn-primary {
-            background: var(--accent);
-            color: #fff;
+            background: var(--primary);
+            color: #0f172a;
+            /* Dark text on light blue */
         }
 
         .btn-success {
-            background: #00c853;
+            background: #10b981;
+            /* Emerald */
             color: #fff;
         }
 
         .btn-secondary {
-            background: #393e46;
-            color: #fff;
-        }
-
-        /* Job Card Styles */
-        .job-card {
             background: var(--bg-card);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 15px;
             border: 1px solid var(--border);
-            cursor: pointer;
-            transition: all 0.2s;
+            color: var(--text-main);
         }
 
-        .job-card:hover {
-            border-color: var(--primary);
-            background: rgba(255, 255, 255, 0.08);
+        .btn-secondary:hover {
+            background: var(--border);
         }
 
-        .job-card h3 {
-            color: var(--primary);
-            margin: 0 0 8px 0;
-            font-size: 18px;
-        }
-
-        .job-meta {
-            display: flex;
-            gap: 15px;
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        /* Datatable Styles */
-        .filters-row {
-            display: flex;
-            gap: 12px;
+        /* Table Datatable Styles */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
             margin-bottom: 20px;
         }
 
-        .filters-row input {
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px 20px;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        th.sortable:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--primary);
+        }
+
+        th.active-sort {
+            color: var(--primary);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        th i.sort-icon {
+            margin-left: 8px;
+            font-size: 10px;
+            opacity: 0.3;
+        }
+
+        th.active-sort i.sort-icon {
+            opacity: 1;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(56, 189, 248, 0.05);
+            cursor: pointer;
+        }
+
+        .job-link-cell {
+            color: var(--primary);
+            font-weight: 500;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .job-link-cell:hover {
+            text-decoration: underline;
+        }
+
+        .company-pill {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .date-cell {
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .search-container {
             flex: 1;
-            padding: 12px;
+            min-width: 280px;
+            position: relative;
+            display: block;
+            /* Ensure no flex conflicts */
+        }
+
+        .search-container input {
+            width: 100%;
+            height: 45px;
+            padding: 0 15px 0 45px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 10px;
             color: #fff;
+            outline: none;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            /* Crucial for width: 100% with padding */
+        }
+
+        .search-container input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.1);
+        }
+
+        .search-container i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .page-ctrl {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-left: 15px;
+            border-left: 1px solid var(--border);
+            height: 45px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 900px) {
+            .filters-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .page-ctrl {
+                border-left: none;
+                border-top: 1px solid var(--border);
+                padding-top: 12px;
+                justify-content: space-between;
+            }
         }
 
         .pagination {
             display: flex;
-            justify-content: center;
-            gap: 5px;
-            margin-top: 20px;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
         }
 
         .page-btn {
@@ -253,6 +407,45 @@
 
         .alerts {
             margin: 20px 0;
+        }
+
+        .source-pill {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .source-pill:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: var(--primary);
+        }
+
+        .source-pill input {
+            display: none;
+        }
+
+        .source-pill span {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .source-pill:has(input:checked) {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: var(--primary);
+        }
+
+        .source-pill:has(input:checked) span {
+            color: var(--primary);
         }
 
         .alert-success {
@@ -278,20 +471,21 @@
         <div class="app-header">
             <div class="app-title-row">
                 <div class="app-title">
-                    <h1 style="display:flex; align-items:center; gap:10px;">
-                        <i class="fas fa-robot" style="color:var(--accent);"></i>
-                        Job Scrapper Pro
+                    <h1>
+                        <i class="fas fa-robot"></i>
+                        Job Scrapper
                     </h1>
                 </div>
             </div>
 
             <!-- Navegação Tabs -->
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="fas fa-chart-line"></i>
-                    Dashboard</button>
-                <button class="tab-btn" onclick="switchTab('tasks')"><i class="fas fa-tasks"></i> Task Manager</button>
-                <button class="tab-btn" onclick="switchTab('browse')"><i class="fas fa-briefcase"></i> Browse
-                    Jobs</button>
+                <button class="tab-btn active" onclick="switchTab('dashboard')">
+                    <i class="fas fa-th-list"></i> Job Feed
+                </button>
+                <button class="tab-btn" onclick="switchTab('tasks')">
+                    <i class="fas fa-microchip"></i> Task Manager
+                </button>
             </div>
         </div>
         <!-- No search tab button here -->
@@ -306,76 +500,98 @@
             {% endif %}
         </div>
 
-        <!-- TAB 1: DASHBOARD -->
+        <!-- TAB 1: DASHBOARD (Unified Feed) -->
         <div id="tab-dashboard" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-val">{{ stats.total_jobs }}</div>
-                    <div class="stat-label">Vagas Total</div>
+                    <div class="stat-label">Total Listings</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-val">{{ stats.total_companies }}</div>
-                    <div class="stat-label">Empresas</div>
+                    <div class="stat-label">Companies</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-val">2</div>
-                    <div class="stat-label">Sites Monitorados</div>
+                    <div class="stat-label">Active Sources</div>
                 </div>
             </div>
 
+            <div class="filters-row">
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="browseSearch" placeholder="Search by title, company, or keywords..."
+                        onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
 
+                <div class="filter-actions">
+                    <button onclick="applyFilters()" class="btn btn-primary" style="height: 45px;"><i
+                            class="fas fa-filter"></i> Filter</button>
+                    <button onclick="clearFilters()" class="btn btn-secondary" style="height: 45px;">Reset</button>
+                </div>
 
-            <!-- Sync Status Panel -->
+                <div class="page-ctrl">
+                    <span style="font-size:11px; color:var(--text-muted); white-space: nowrap;">Per Page:</span>
+                    <select id="pageSizeSelect" class="btn btn-secondary"
+                        style="padding: 6px 12px; font-size: 13px; min-width: 75px; height: 35px;"
+                        onchange="updatePageSize()">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+
+            <div
+                style="margin-bottom: 12px; padding: 0 5px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: var(--text-muted);">
+                    <i class="fas fa-stream"></i>
+                    Showing <strong id="browse-count" style="color: var(--primary);">0</strong> results
+                    <span style="opacity: 0.5;">(Total DB count: <span id="browse-total">0</span>)</span>
+                </span>
+            </div>
+
+            <div id="browseList" class="table-container">
+                <div style="text-align:center; padding:60px; color:var(--text-muted);">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size: 24px; margin-bottom: 10px;"></i>
+                    <div>Synchronizing data feed...</div>
+                </div>
+            </div>
+
+            <div id="pagination" class="pagination"></div>
+
+            <!-- Sync Status Panel (Lower Priority) -->
             {% if sync_status and sync_status.checked and sync_status.data %}
             <div
-                style="margin-top: 20px; background: #2d3436; padding: 15px; border-radius: 8px; border-left: 4px solid #6c5ce7;">
-                <h4 style="margin-top:0; color: #a29bfe;">⚡ Status de Sincronização (Local vs DB)</h4>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+                style="margin-top: 40px; background: rgba(56, 189, 248, 0.05); padding: 20px; border-radius: 12px; border: 1px solid var(--primary);">
+                <h4
+                    style="margin-top:0; color: var(--primary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fas fa-database"></i> Database Sync Health
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
                     <div>
-                        <div style="font-size: 24px; font-weight: bold; color: #fff;">{{ sync_status.data.total_local }}
+                        <div style="font-size: 20px; font-weight: bold; color: #fff;">{{ sync_status.data.total_local }}
                         </div>
-                        <div style="font-size: 12px; color: #b2bec3;">Total Local (JSON)</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Local Cache</div>
                     </div>
                     <div>
-                        <div style="font-size: 24px; font-weight: bold; color: #00b894;">{{
+                        <div style="font-size: 20px; font-weight: bold; color: #10b981;">{{
                             sync_status.data.new_to_insert }}</div>
-                        <div style="font-size: 12px; color: #b2bec3;">Novas para Inserir</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Pending Load</div>
                     </div>
                     <div>
-                        <div style="font-size: 24px; font-weight: bold; color: #74b9ff;">{{
+                        <div style="font-size: 20px; font-weight: bold; color: var(--primary);">{{
                             sync_status.data.already_in_db }}</div>
-                        <div style="font-size: 12px; color: #b2bec3;">Já no Banco</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Synced</div>
                     </div>
                 </div>
-                {% if sync_status.data.sample_new %}
-                <div style="margin-top:10px; font-size:12px; color:#dfe6e9;">Exemplos de novas: {{ ",
-                    ".join(sync_status.data.sample_new) }}...</div>
-                {% endif %}
-                <div style="margin-top: 10px; font-size: 11px; color: #636e72; text-align: right;">Última verificação:
-                    {{ sync_status.last_check }}</div>
             </div>
             {% endif %}
         </div>
 
         <!-- TAB 3: TASK MANAGER -->
         <div id="tab-tasks" class="tab-content">
-            <h3>Task Lifecycle Management</h3>
-
-            <!-- Task Trigger Actions -->
-            <div class="controls-section"
-                style="margin-bottom: 20px; text-align: center; padding: 40px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px dashed var(--border);">
-                <form method="post" action="/" style="display:inline;">
-                    <input type="hidden" name="action" value="update">
-                    <button type="submit" class="btn btn-success" style="padding: 15px 40px; font-size: 18px;" {% if
-                        current_status.scraper.running or current_status.loader.running %}disabled{% endif %}>
-                        <i class="fas fa-bolt" style="margin-right: 10px;"></i> Run Full Pipeline
-                    </button>
-                </form>
-                <p style="margin-top: 20px; color: var(--text-muted); font-size: 14px;">
-                    This will automatically <strong>Scrape</strong> new data, <strong>Load</strong> it into the
-                    database, and <strong>Validate</strong> all links.
-                </p>
-            </div>
 
             <div class="stats-grid" style="margin-bottom: 20px;">
                 <div class="stat-card">
@@ -396,46 +612,76 @@
                 </div>
             </div>
 
-            <!-- Queue Management Actions -->
-            <div class="controls-section" style="margin-bottom: 20px;">
-                <button onclick="refreshTaskStatus()" class="btn btn-primary"><i class="fas fa-sync"></i> Refresh
-                    Status</button>
-                <button onclick="clearFailedJobs()" class="btn btn-secondary" id="clear-failed-btn"><i
-                        class="fas fa-trash"></i> Clear Failed Jobs</button>
-            </div>
+            <!-- Consolidated Tasks Table -->
+            <div
+                style="background: var(--bg-card); padding: 25px; border-radius: 12px; border: 1px solid var(--border);">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 16px; color: var(--text-main);">
+                            <i class="fas fa-history" style="margin-right: 8px; color: var(--primary);"></i> Task
+                            History
+                        </h4>
+                        <div
+                            style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">
+                            Recent worker activity</div>
+                    </div>
 
-            <!-- Active Jobs Section -->
-            <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                <h4 style="margin-top: 0;">Active Jobs</h4>
-                <div id="active-jobs-list">
-                    <div style="text-align:center; padding:20px; color:#888;">No active jobs</div>
-                </div>
-            </div>
+                    <div
+                        style="display: flex; gap: 8px; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 10px; border: 1px solid var(--border);">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <i class="fas fa-search"
+                                style="position: absolute; left: 12px; font-size: 12px; color: var(--text-muted);"></i>
+                            <input type="text" id="pipeline-query" placeholder="Target query (e.g. Python)..."
+                                style="background: transparent; border: none; color: #fff; padding: 8px 12px 8px 32px; font-size: 13px; width: 180px; outline: none;">
+                        </div>
 
-            <!-- Failed Jobs Section -->
-            <div style="background: var(--bg-card); padding: 20px; border-radius: 12px;">
-                <h4 style="margin-top: 0;">Failed Jobs</h4>
-                <div id="failed-jobs-list">
-                    <div style="text-align:center; padding:20px; color:#888;">No failed jobs</div>
+                        <div style="width: 1px; background: var(--border); margin: 4px 0;"></div>
+
+                        <div style="display: flex; align-items: center; gap: 5px; padding: 0 5px;">
+                            <select id="pipeline-region"
+                                style="background: transparent; border: none; color: var(--text-muted); font-size: 11px; outline: none; cursor: pointer; width: 85px;">
+                                <option value="">Everywhere</option>
+                                <option value="USA">USA Only</option>
+                                <option value="Americas">Americas</option>
+                                <option value="Europe">Europe</option>
+                            </select>
+                        </div>
+
+                        <div style="width: 1px; background: var(--border); margin: 4px 0;"></div>
+
+                        <div style="display: flex; align-items: center; gap: 5px; padding: 0 5px;">
+                            <select id="pipeline-type"
+                                style="background: transparent; border: none; color: var(--text-muted); font-size: 11px; outline: none; cursor: pointer; width: 85px;">
+                                <option value="">All Types</option>
+                                <option value="full-time">Full-time</option>
+                                <option value="contract">Contract</option>
+                            </select>
+                            <div id="pipeline-sources"
+                                style="display: flex; align-items: center; gap: 6px; padding: 0 10px;">
+                                <!-- Sources will be injected here dynamically -->
+                                <span style="font-size: 11px; color: var(--text-muted); opacity: 0.5;">Loading
+                                    sources...</span>
+                            </div>
+
+                            <button id="run-pipeline-btn" onclick="runPipeline()" class="btn btn-primary"
+                                style="padding: 8px 18px; font-size: 12px; border-radius: 6px;">
+                                <i class="fas fa-bolt" style="margin-right: 6px;"></i> Run Research
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                <div id="tasks-table-container" class="table-container" style="margin-bottom: 20px;">
+                    <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <i class="fas fa-circle-notch fa-spin" style="margin-bottom: 10px;"></i>
+                        <div>Monitoring worker queue...</div>
+                    </div>
+                </div>
+                <div id="tasks-pagination" class="pagination"></div>
             </div>
         </div>
 
-        <!-- TAB 3: BROWSE (Datatable JS) -->
-        <div id="tab-browse" class="tab-content">
-            <div class="filters-row">
-                <input type="text" id="browseSearch" placeholder="Filtrar por título ou empresa..."
-                    onkeyup="if(event.key==='Enter') applyFilters()">
-                <button onclick="applyFilters()" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
-                <button onclick="clearFilters()" class="btn btn-secondary"><i class="fas fa-times"></i> Clear</button>
-            </div>
-
-            <div id="browseList">
-                <div style="text-align:center; padding:40px; color:#888;">Carregando dados...</div>
-            </div>
-
-            <div id="pagination" class="pagination"></div>
-        </div>
 
     </div><!-- End Container -->
 
@@ -474,10 +720,18 @@
         function initApp() {
             // Restore tab state or default to dashboard
             const savedTab = localStorage.getItem('activeTab') || 'dashboard';
-            switchTab(savedTab === 'search' ? 'dashboard' : savedTab);
+            // Only dashboard or tasks are valid now
+            const finalTab = (savedTab === 'tasks') ? 'tasks' : 'dashboard';
+            switchTab(finalTab);
 
-            // Connect to WebSocket if Tasks tab is active or just connect always for badges
+            // Meta data discovery
+            fetchSources();
+
+            // Connect to WebSocket always for badges
             connectTaskWebSocket();
+
+            // Always load the feed data initially
+            loadAllJobs();
         }
 
         // --- TASK MANAGER ---
@@ -517,88 +771,268 @@
             }
         }
 
-        function updateQueueStatus(status) {
+        async function updateQueueStatus(status) {
             // Update stats
             document.getElementById('queue-queued').textContent = status.queued || 0;
             document.getElementById('queue-started').textContent = status.started || 0;
             document.getElementById('queue-finished').textContent = status.finished || 0;
             document.getElementById('queue-failed').textContent = status.failed || 0;
 
-            document.getElementById('queue-failed').textContent = status.failed || 0;
+            const newIds = [
+                ...(status.started_jobs || []),
+                ...(status.queued_jobs || []),
+                ...(status.failed_jobs || []),
+                ...(status.finished_jobs || [])
+            ];
 
-            // Update active jobs list
-            updateActiveJobs(status.started_jobs || []);
+            // Map IDs to objects with state
+            const idStateMap = {};
+            (status.started_jobs || []).forEach(id => idStateMap[id] = 'running');
+            (status.queued_jobs || []).forEach(id => idStateMap[id] = 'queued');
+            (status.failed_jobs || []).forEach(id => idStateMap[id] = 'failed');
+            (status.finished_jobs || []).forEach(id => idStateMap[id] = 'finished');
 
-            // Update failed jobs list
-            updateFailedJobs(status.failed_jobs || []);
+            // Fetch metadata for new or running jobs
+            const fetchPromises = newIds.map(async id => {
+                if (!tasksMetadata[id] || ['running', 'queued'].includes(idStateMap[id])) {
+                    try {
+                        const resp = await fetch(`/api/admin/job/${id}`);
+                        tasksMetadata[id] = await resp.json();
+                    } catch (e) { console.error('Meta fetch error', id, e); }
+                }
+            });
+
+            await Promise.allSettled(fetchPromises);
+
+            allTasksHistory = newIds.map(id => {
+                const meta = tasksMetadata[id] || {};
+                return {
+                    id,
+                    state: idStateMap[id],
+                    started_at: meta.started_at || null,
+                    ended_at: meta.ended_at || null,
+                    duration: meta.duration || 0
+                };
+            });
+
+            sortTasks();
+            renderTasks();
         }
 
-        async function updateActiveJobs(jobIds) {
-            const container = document.getElementById('active-jobs-list');
+        function sortTasks(col) {
+            if (col) {
+                if (tasksSortCol === col) {
+                    tasksSortDir = tasksSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    tasksSortCol = col;
+                    tasksSortDir = 'desc'; // Default to desc for dates/ids
+                }
+                tasksCurrentPage = 1;
+            }
 
-            if (jobIds.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No active jobs</div>';
+            allTasksHistory.sort((a, b) => {
+                let valA = a[tasksSortCol];
+                let valB = b[tasksSortCol];
+
+                // For ID sorting, prioritize the timestamp part to avoid prefix issues (e.g., s vs p)
+                if (tasksSortCol === 'id') {
+                    const getSortableId = (id) => {
+                        const parts = id.split('-');
+                        const ts = parts[parts.length - 1];
+                        return isNaN(ts) ? id : ts + '-' + id;
+                    };
+                    valA = getSortableId(a.id);
+                    valB = getSortableId(b.id);
+                }
+
+                if (valA === null) valA = tasksSortDir === 'asc' ? 'ZZZ' : '000';
+                if (valB === null) valB = tasksSortDir === 'asc' ? 'ZZZ' : '000';
+
+                // Ensure pending tasks (null started_at) stay at top when sorting by time DESC
+                if (tasksSortDir === 'desc') {
+                    if (a[tasksSortCol] === null && b[tasksSortCol] !== null) return -1;
+                    if (a[tasksSortCol] !== null && b[tasksSortCol] === null) return 1;
+                } else {
+                    if (a[tasksSortCol] === null && b[tasksSortCol] !== null) return 1;
+                    if (a[tasksSortCol] !== null && b[tasksSortCol] === null) return -1;
+                }
+
+                if (valA < valB) return tasksSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return tasksSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            if (col) renderTasks();
+        }
+
+        async function renderTasks() {
+            const container = document.getElementById('tasks-table-container');
+
+            if (allTasksHistory.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">Queue is currently empty.</div>';
+                document.getElementById('tasks-pagination').innerHTML = '';
                 return;
             }
 
-            let html = '';
-            for (const jobId of jobIds) {
-                try {
-                    const response = await fetch(`/api/admin/job/${jobId}`);
-                    const job = await response.json();
+            const start = (tasksCurrentPage - 1) * tasksPageSize;
+            const pageTasks = allTasksHistory.slice(start, start + tasksPageSize);
 
-                    html += `
-                        <div class="job-card" style="cursor: default; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin: 0; font-size: 16px;">${jobId}</h3>
-                                <div class="job-meta">
-                                    <span>Status: ${job.status}</span>
-                                    ${job.started_at ? `<span>Started: ${new Date(job.started_at).toLocaleString()}</span>` : ''}
-                                </div>
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable ${tasksSortCol === 'id' ? 'active-sort' : ''}" onclick="sortTasks('id')">Task ID ${getSortIcon(tasksSortCol, 'id', tasksSortDir)}</th>
+                            <th class="sortable ${tasksSortCol === 'state' ? 'active-sort' : ''}" onclick="sortTasks('state')">Status ${getSortIcon(tasksSortCol, 'state', tasksSortDir)}</th>
+                            <th class="sortable ${tasksSortCol === 'started_at' ? 'active-sort' : ''}" onclick="sortTasks('started_at')">Started ${getSortIcon(tasksSortCol, 'started_at', tasksSortDir)}</th>
+                            <th class="sortable ${tasksSortCol === 'ended_at' ? 'active-sort' : ''}" onclick="sortTasks('ended_at')">Finished ${getSortIcon(tasksSortCol, 'ended_at', tasksSortDir)}</th>
+                            <th class="sortable ${tasksSortCol === 'duration' ? 'active-sort' : ''}" onclick="sortTasks('duration')">Duration ${getSortIcon(tasksSortCol, 'duration', tasksSortDir)}</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for (const task of pageTasks) {
+                const job = tasksMetadata[task.id] || {};
+
+                const startedStr = job.started_at ? new Date(job.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---';
+                const finishedStr = job.ended_at ? new Date(job.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (job.started_at ? '<span style="color:var(--primary); font-size:10px;">RUNNING...</span>' : '---');
+                const durationStr = (job.duration !== null && job.duration !== undefined) ? `${job.duration}s` : '---';
+
+                html += `
+                    <tr>
+                        <td>
+                            <div style="font-family: monospace; font-size: 13px; color: var(--primary);">
+                                <i class="fas fa-hashtag" style="font-size: 10px; opacity: 0.5;"></i> ${task.id}
                             </div>
-                            <button onclick="cancelJob('${jobId}')" class="btn btn-secondary" style="padding: 8px 16px;"><i class="fas fa-stop"></i> Cancel</button>
-                        </div>
-                    `;
-                } catch (e) {
-                    console.error('Error fetching job', jobId, e);
-                }
+                        </td>
+                        <td>
+                            <span class="company-pill" style="
+                                background: ${task.state === 'running' ? 'rgba(56, 189, 248, 0.15)' : (task.state === 'failed' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(255,255,255,0.05)')};
+                                color: ${task.state === 'running' ? 'var(--primary)' : (task.state === 'failed' ? '#ff5252' : 'var(--text-muted)')};
+                                font-size: 10px;
+                                padding: 4px 10px;
+                            ">
+                                <i class="fas ${task.state === 'running' ? 'fa-sync fa-spin' : (task.state === 'failed' ? 'fa-exclamation-triangle' : 'fa-check')}"></i>
+                                ${task.state.toUpperCase()}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
+                                ${startedStr}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
+                                ${finishedStr}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size: 12px; color: var(--primary); font-weight: 600;">
+                                ${durationStr}
+                            </div>
+                        </td>
+                        <td style="text-align:right;">
+                            ${task.state === 'running' || task.state === 'queued' ?
+                        `<button onclick="cancelJob('${task.id}')" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px;">
+                                    <i class="fas fa-stop"></i> Abort
+                                </button>` :
+                        (task.state === 'failed' ?
+                            `<button onclick="alert('Error: ${job.exc_info?.split('\n')[0] || 'Unknown error'}')" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px; color:#ff5252; border-color: rgba(255, 82, 82, 0.2);">
+                                    <i class="fas fa-terminal"></i> Log
+                                </button>` :
+                            `<i class="fas fa-check-circle" style="color: #10b981; font-size: 14px;"></i>`)
+                    }
+                        </td>
+                    </tr>
+                `;
             }
 
+            html += '</tbody></table>';
             container.innerHTML = html;
+            renderTasksPagination();
         }
 
-        async function updateFailedJobs(jobIds) {
-            const container = document.getElementById('failed-jobs-list');
+        function renderTasksPagination() {
+            const container = document.getElementById('tasks-pagination');
+            const totalPages = Math.ceil(allTasksHistory.length / tasksPageSize);
 
-            if (jobIds.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">No failed jobs</div>';
+            if (totalPages <= 1) {
+                container.innerHTML = '';
                 return;
             }
 
-            let html = '';
-            for (const jobId of jobIds) {
-                try {
-                    const response = await fetch(`/api/admin/job/${jobId}`);
-                    const job = await response.json();
+            let btns = `<button class="page-btn" onclick="tasksCurrentPage--; renderTasks()" ${tasksCurrentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
 
-                    html += `
-                        <div class="job-card" style="cursor: default; border-color: #ff5252;">
-                            <h3 style="margin: 0; font-size: 16px; color: #ff5252;">${jobId}</h3>
-                            <div class="job-meta">
-                                <span>Failed at: ${job.ended_at ? new Date(job.ended_at).toLocaleString() : 'N/A'}</span>
-                            </div>
-                            ${job.exc_info ? `<details style="margin-top: 10px; font-size: 12px; color: #ff8a80;">
-                                <summary style="cursor: pointer;">Error Details</summary>
-                                <pre style="margin-top: 5px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow-x: auto;">${job.exc_info}</pre>
-                            </details>` : ''}
-                        </div>
-                    `;
-                } catch (e) {
-                    console.error('Error fetching job', jobId, e);
-                }
+            for (let i = 1; i <= totalPages; i++) {
+                btns += `<button class="page-btn ${i === tasksCurrentPage ? 'active' : ''}" onclick="tasksCurrentPage=${i}; renderTasks()">${i}</button>`;
             }
 
-            container.innerHTML = html;
+            btns += `<button class="page-btn" onclick="tasksCurrentPage++; renderTasks()" ${tasksCurrentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+
+            container.innerHTML = btns;
+        }
+
+        async function runPipeline() {
+            const query = document.getElementById('pipeline-query').value.trim();
+            const region = document.getElementById('pipeline-region').value;
+            const type = document.getElementById('pipeline-type').value;
+
+            const selectedSources = Array.from(document.querySelectorAll('#pipeline-sources input:checked'))
+                .map(cb => cb.value);
+
+            if (selectedSources.length === 0) {
+                alert('Please select at least one source!');
+                return;
+            }
+
+            const msg = query ?
+                `Start research pipeline for "${query}"?` :
+                'Start standard background scraping pipeline?';
+
+            if (!confirm(msg)) return;
+
+            const btn = document.getElementById('run-pipeline-btn');
+            const originalHtml = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enqueuing...';
+
+            try {
+                const spiders = {};
+                selectedSources.forEach(spiderId => {
+                    spiders[spiderId] = {
+                        "queries": query ? [query] : null,
+                        "region": region,
+                        "job_type": type,
+                        "category": type
+                    };
+                });
+
+                const payload = {
+                    config: { spiders: spiders }
+                };
+
+                const response = await fetch('/api/admin/pipeline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alert('Pipeline enqueued successfully!');
+                    document.getElementById('pipeline-query').value = '';
+                    refreshTaskStatus();
+                } else {
+                    const err = await response.json();
+                    alert('Error: ' + (err.detail || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Connection error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
         }
 
         async function refreshTaskStatus() {
@@ -647,7 +1081,86 @@
         let allJobs = [];
         let filteredJobs = [];
         let currentPage = 1;
-        const pageSize = 15;
+        let pageSize = 10;
+        let sortCol = 'created_at';
+        let sortDir = 'desc';
+
+        // --- TASK STATE ---
+        let tasksMetadata = {};
+        let allTasksHistory = [];
+        let tasksCurrentPage = 1;
+        let tasksPageSize = 10;
+        let tasksSortCol = 'id';
+        let tasksSortDir = 'desc';
+        let availableSources = {};
+
+        async function fetchSources() {
+            try {
+                const response = await fetch('/api/admin/sources');
+                availableSources = await response.json();
+                renderSourceSelector();
+            } catch (e) {
+                console.error('Failed to fetch sources:', e);
+            }
+        }
+
+        function renderSourceSelector() {
+            const container = document.getElementById('pipeline-sources');
+            if (!container) return;
+
+            let html = '';
+            Object.entries(availableSources).forEach(([id, cfg]) => {
+                const shortName = cfg.nice_name.split(' ')[0].substring(0, 3).toUpperCase();
+                html += `
+                        <label class="source-pill" title="${cfg.nice_name}">
+                            <input type="checkbox" value="${id}" checked>
+                            <span>${shortName}</span>
+                        </label>
+                    `;
+            });
+            container.innerHTML = html;
+        }
+
+
+        const getSortIcon = (currentCol, targetCol, currentDir) => {
+            if (currentCol !== targetCol) return '<i class="fas fa-sort sort-icon" style="opacity:0.2;"></i>';
+            return currentDir === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>';
+        };
+
+        function updatePageSize() {
+            pageSize = parseInt(document.getElementById('pageSizeSelect').value);
+            currentPage = 1;
+            renderBrowse();
+        }
+
+        function sortBrowse(col) {
+            if (sortCol === col) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortCol = col;
+                sortDir = 'asc';
+            }
+
+            filteredJobs.sort((a, b) => {
+                let valA = a[col] || '';
+                let valB = b[col] || '';
+
+                if (col === 'created_at') {
+                    valA = new Date(valA);
+                    valB = new Date(valB);
+                } else {
+                    valA = valA.toString().toLowerCase();
+                    valB = valB.toString().toLowerCase();
+                }
+
+                if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            currentPage = 1;
+            renderBrowse();
+        }
 
         async function loadAllJobs() {
             try {
@@ -656,6 +1169,7 @@
                 const data = await response.json();
                 allJobs = data.jobs;
                 filteredJobs = allJobs;
+                document.getElementById('browse-total').textContent = allJobs.length;
                 renderBrowse();
             } catch (e) {
                 document.getElementById('browseList').innerHTML = '<div class="alert-error">Erro ao carregar dados.</div>';
@@ -665,7 +1179,9 @@
         function applyFilters() {
             const term = document.getElementById('browseSearch').value.toLowerCase();
             filteredJobs = allJobs.filter(j =>
-                j.title.toLowerCase().includes(term) || j.company.toLowerCase().includes(term)
+                j.title.toLowerCase().includes(term) ||
+                j.company.toLowerCase().includes(term) ||
+                (j.source && j.source.toLowerCase().includes(term))
             );
             currentPage = 1;
             renderBrowse();
@@ -682,22 +1198,59 @@
             const start = (currentPage - 1) * pageSize;
             const pageJobs = filteredJobs.slice(start, start + pageSize);
 
+            document.getElementById('browse-count').textContent = filteredJobs.length;
+
             if (pageJobs.length === 0) {
                 document.getElementById('browseList').innerHTML = '<div style="text-align:center; padding:40px;">Nenhuma vaga encontrada.</div>';
                 document.getElementById('pagination').innerHTML = '';
                 return;
             }
 
-            let html = pageJobs.map(job => `
-                <div class="job-card" onclick="window.open('${job.link}', '_blank')">
-                    <h3>${job.title}</h3>
-                    <div class="job-meta">
-                        <span><i class="fas fa-building"></i> ${job.company}</span>
-                        <span><i class="fas fa-calendar"></i> ${new Date(job.created_at).toLocaleDateString()}</span>
-                        <span style="margin-left:auto; color:var(--primary);"><i class="fas fa-external-link-alt"></i> Open</span>
-                    </div>
-                </div>
+            const getIcon = (col) => {
+                if (sortCol !== col) return '<i class="fas fa-sort sort-icon"></i>';
+                return sortDir === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>';
+            };
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable ${sortCol === 'title' ? 'active-sort' : ''}" onclick="sortBrowse('title')">Job Title ${getIcon('title')}</th>
+                            <th class="sortable ${sortCol === 'company' ? 'active-sort' : ''}" onclick="sortBrowse('company')">Company ${getIcon('company')}</th>
+                            <th class="sortable ${sortCol === 'source' ? 'active-sort' : ''}" onclick="sortBrowse('source')">Source ${getIcon('source')}</th>
+                            <th class="sortable ${sortCol === 'created_at' ? 'active-sort' : ''}" onclick="sortBrowse('created_at')">Posted Date ${getIcon('created_at')}</th>
+                            <th style="text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            html += pageJobs.map(job => `
+                <tr onclick="window.open('${job.link}', '_blank')">
+                    <td>
+                        <div class="job-link-cell">
+                            <i class="fas fa-briefcase"></i>
+                            ${job.title}
+                        </div>
+                    </td>
+                    <td><span class="company-pill">${job.company}</span></td>
+                    <td>
+                        <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">
+                            <i class="fas fa-globe" style="margin-right: 4px; font-size: 10px;"></i>
+                            ${job.source || 'unknown'}
+                        </span>
+                    </td>
+                    <td><span class="date-cell">${new Date(job.created_at).toLocaleDateString()}</span></td>
+                    <td style="text-align:right;">
+                        <span style="color:var(--primary); font-size: 11px; font-weight: 600;"><i class="fas fa-external-link-alt"></i> OPEN</span>
+                    </td>
+                </tr>
             `).join('');
+
+            html += `
+                    </tbody>
+                </table>
+            `;
 
             document.getElementById('browseList').innerHTML = html;
             renderPagination();
@@ -711,19 +1264,55 @@
             }
 
             let btns = '';
+
+            // Page info
+            btns += `<div style="width: 100%; text-align: center; margin-bottom: 12px; font-size: 12px; color: var(--text-muted);">
+                        Page <span style="color: var(--primary); font-weight: 600;">${currentPage}</span> of <span style="font-weight: 600;">${totalPages}</span>
+                     </div>`;
+
+            btns += `<div style="display: flex; gap: 5px; justify-content: center; width: 100%;">`;
+
             // Previous
             btns += `<button class="page-btn" onclick="currentPage--; renderBrowse()" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
 
-            // Numbers
-            let startPage = Math.max(1, currentPage - 2);
-            let endPage = Math.min(totalPages, currentPage + 2);
+            // Windowed Pagination Logic
+            const delta = 1;
+            const left = currentPage - delta;
+            const right = currentPage + delta;
+            const range = [];
+            const rangeWithDots = [];
 
-            for (let i = startPage; i <= endPage; i++) {
-                btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= left && i <= right)) {
+                    range.push(i);
+                }
             }
+
+            let l;
+            for (let i of range) {
+                if (l) {
+                    if (i - l === 2) {
+                        rangeWithDots.push(l + 1);
+                    } else if (i - l !== 1) {
+                        rangeWithDots.push('...');
+                    }
+                }
+                rangeWithDots.push(i);
+                l = i;
+            }
+
+            rangeWithDots.forEach(i => {
+                if (i === '...') {
+                    btns += `<span style="padding: 8px 12px; color: var(--text-muted); font-size: 13px; display: flex; align-items: center;">...</span>`;
+                } else {
+                    btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
+                }
+            });
 
             // Next
             btns += `<button class="page-btn" onclick="currentPage++; renderBrowse()" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+
+            btns += `</div>`;
 
             document.getElementById('pagination').innerHTML = btns;
         }

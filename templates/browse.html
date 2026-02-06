@@ -146,7 +146,93 @@
 
         .job-count {
             font-weight: 600;
-            color: #00d9ff;
+            color: var(--primary);
+        }
+
+        /* Table Style Consistent with index.html */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px 20px;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        th.sortable:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--primary);
+        }
+
+        th.active-sort {
+            color: var(--primary);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        th i.sort-icon {
+            margin-left: 8px;
+            font-size: 10px;
+            opacity: 0.3;
+        }
+
+        th.active-sort i.sort-icon {
+            opacity: 1;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(56, 189, 248, 0.05);
+            cursor: pointer;
+        }
+
+        .job-link-cell {
+            color: var(--primary);
+            font-weight: 500;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .company-pill {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid var(--border);
         }
 
         .datatable {
@@ -251,8 +337,9 @@
         }
 
         .page-btn.active {
-            background: linear-gradient(135deg, #00d9ff, #0099ff);
-            border-color: #00d9ff;
+            background: var(--primary);
+            color: #0f172a;
+            border-color: var(--primary);
         }
 
         .page-info {
@@ -280,22 +367,34 @@
     <div class="container">
         <div class="header">
             <h1>📋 Browse All Jobs</h1>
-            <a href="/" class="nav-link">← Back to Search</a>
+            <a href="/" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
 
-        <div class="filters">
-            <input type="text" id="searchInput" class="filter-input" placeholder="🔍 Search by title or company...">
+        <div class="filters" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <input type="text" id="searchInput" class="filter-input" placeholder="🔍 Search by title or company..."
+                style="flex: 1; min-width: 250px;">
             <button onclick="applyFilters()" class="btn">Apply</button>
             <button onclick="clearFilters()" class="btn btn-clear">Clear</button>
+
+            <div
+                style="margin-left:auto; display:flex; align-items:center; gap:10px; background: rgba(255, 255, 255, 0.05); padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border);">
+                <span style="font-size:12px; color:var(--text-muted);">Items per page:</span>
+                <select id="pageSizeSelect" onchange="updatePageSize()"
+                    style="background: transparent; color: #fff; border: none; font-size: 14px; outline: none; cursor: pointer;">
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
         </div>
 
         <div class="stats-row">
-            <span>Showing <span class="job-count" id="showing">0</span> of <span class="job-count" id="total">0</span>
-                jobs</span>
-            <span id="pageInfo" class="page-info"></span>
+            <span>Total: <span class="job-count" id="total">0</span> jobs (<span class="job-count" id="showing">0</span>
+                matching)</span>
         </div>
 
-        <div class="datatable">
+        <div class="table-container">
             <div id="jobList" class="loading">Loading jobs...</div>
         </div>
 
@@ -306,7 +405,44 @@
         let allJobs = [];
         let filteredJobs = [];
         let currentPage = 1;
-        const pageSize = 20;
+        let pageSize = 10;
+        let sortCol = 'created_at';
+        let sortDir = 'desc';
+
+        function updatePageSize() {
+            pageSize = parseInt(document.getElementById('pageSizeSelect').value);
+            currentPage = 1;
+            renderJobs();
+        }
+
+        function sortJobs(col) {
+            if (sortCol === col) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortCol = col;
+                sortDir = 'asc';
+            }
+
+            filteredJobs.sort((a, b) => {
+                let valA = a[col] || '';
+                let valB = b[col] || '';
+
+                if (col === 'created_at') {
+                    valA = new Date(valA);
+                    valB = new Date(valB);
+                } else {
+                    valA = valA.toString().toLowerCase();
+                    valB = valB.toString().toLowerCase();
+                }
+
+                if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            currentPage = 1;
+            renderJobs();
+        }
 
         // Load all jobs on page load
         // Load jobs (optionally with search)
@@ -358,18 +494,46 @@
                 return;
             }
 
-            const jobsHTML = pageJobs.map(job => `
-                <div class="job-item" onclick="window.open('${job.link}', '_blank')">
-                    <h3 class="job-title">${job.title}</h3>
-                    <div class="job-company">🏢 ${job.company}</div>
-                    <div class="job-meta">
-                        <span>📅 ${formatDate(job.created_at)}</span>
-                        <span>🔗 <a href="${job.link}" target="_blank" onclick="event.stopPropagation()">View Job</a></span>
-                    </div>
-                </div>
+            const getIcon = (col) => {
+                if (sortCol !== col) return '<i class="fas fa-sort sort-icon"></i>';
+                return sortDir === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>';
+            };
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable ${sortCol === 'title' ? 'active-sort' : ''}" onclick="sortJobs('title')">Job Title ${getIcon('title')}</th>
+                            <th class="sortable ${sortCol === 'company' ? 'active-sort' : ''}" onclick="sortJobs('company')">Company ${getIcon('company')}</th>
+                            <th class="sortable ${sortCol === 'created_at' ? 'active-sort' : ''}" onclick="sortJobs('created_at')">Posted Date ${getIcon('created_at')}</th>
+                            <th style="text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            html += pageJobs.map(job => `
+                <tr onclick="window.open('${job.link}', '_blank')">
+                    <td>
+                        <div class="job-link-cell">
+                            <i class="fas fa-briefcase"></i>
+                            ${job.title}
+                        </div>
+                    </td>
+                    <td><span class="company-pill">${job.company}</span></td>
+                    <td><span class="date-cell">${formatDate(job.created_at)}</span></td>
+                    <td style="text-align:right;">
+                        <span style="color:var(--primary); font-size: 12px;"><i class="fas fa-external-link-alt"></i> OPEN</span>
+                    </td>
+                </tr>
             `).join('');
 
-            document.getElementById('jobList').innerHTML = jobsHTML;
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('jobList').innerHTML = html;
             renderPagination();
         }
 
@@ -382,19 +546,11 @@
             }
 
             let paginationHTML = `
-                <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>««</button>
-                <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>«</button>
+                <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-angle-double-left"></i></button>
+                <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>
             `;
 
-            const maxButtons = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-            if (endPage - startPage < maxButtons - 1) {
-                startPage = Math.max(1, endPage - maxButtons + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
+            for (let i = 1; i <= totalPages; i++) {
                 paginationHTML += `
                     <button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">
                         ${i}
@@ -403,8 +559,8 @@
             }
 
             paginationHTML += `
-                <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>»</button>
-                <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>»»</button>
+                <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>
+                <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-angle-double-right"></i></button>
             `;
 
             paginationHTML += `<span class="page-info">Page ${currentPage} of ${totalPages}</span>`;

@@ -12,19 +12,20 @@ class PositionRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def create(self, title: str, link: str, company: str) -> Position:
+    def create(self, title: str, link: str, company: str, source: str = None) -> Position:
         """Create a new position."""
         position = Position(
             title=title,
             link=link,
-            company=company
+            company=company,
+            source=source
         )
         self.db.add(position)
         self.db.commit()
         self.db.refresh(position)
         return position
     
-    def upsert(self, title: str, link: str, company: str) -> Position:
+    def upsert(self, title: str, link: str, company: str, source: str = None) -> Position:
         """Insert or update position if link already exists."""
         position = self.get_by_link(link)
         
@@ -32,12 +33,14 @@ class PositionRepository:
             # Update existing
             position.title = title
             position.company = company
+            if source:
+                position.source = source
             position.updated_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(position)
         else:
             # Create new
-            position = self.create(title, link, company)
+            position = self.create(title, link, company, source)
         
         return position
     
@@ -54,12 +57,13 @@ class PositionRepository:
         return self.db.query(Position).filter(
             or_(
                 Position.title.ilike(f"%{query}%"),
-                Position.company.ilike(f"%{query}%")
+                Position.company.ilike(f"%{query}%"),
+                Position.source.ilike(f"%{query}%")
             )
         ).order_by(Position.created_at.desc()).limit(limit).offset(offset).all()
     
     def get_all(self, limit: int = 100, offset: int = 0, 
-                search: str = None, company: str = None) -> List[Position]:
+                search: str = None, company: str = None, source: str = None) -> List[Position]:
         """Get all positions with optional filters."""
         query = self.db.query(Position)
         
@@ -67,16 +71,20 @@ class PositionRepository:
             query = query.filter(
                 or_(
                     Position.title.ilike(f"%{search}%"),
-                    Position.company.ilike(f"%{search}%")
+                    Position.company.ilike(f"%{search}%"),
+                    Position.source.ilike(f"%{search}%")
                 )
             )
         
         if company:
             query = query.filter(Position.company.ilike(f"%{company}%"))
         
+        if source:
+            query = query.filter(Position.source.ilike(f"%{source}%"))
+        
         return query.order_by(Position.created_at.desc()).limit(limit).offset(offset).all()
     
-    def count(self, search: str = None, company: str = None) -> int:
+    def count(self, search: str = None, company: str = None, source: str = None) -> int:
         """Count positions with optional filters."""
         query = self.db.query(func.count(Position.id))
         
@@ -84,12 +92,16 @@ class PositionRepository:
             query = query.filter(
                 or_(
                     Position.title.ilike(f"%{search}%"),
-                    Position.company.ilike(f"%{search}%")
+                    Position.company.ilike(f"%{search}%"),
+                    Position.source.ilike(f"%{search}%")
                 )
             )
         
         if company:
             query = query.filter(Position.company.ilike(f"%{company}%"))
+            
+        if source:
+            query = query.filter(Position.source.ilike(f"%{source}%"))
         
         return query.scalar()
     
@@ -121,6 +133,7 @@ class PositionRepository:
                 link = pos_data.get("link", "").strip()
                 title = pos_data.get("title", "").strip()
                 company = pos_data.get("company", "").strip()
+                source = pos_data.get("source", "").strip()
                 
                 if not link or not title or not company:
                     stats["errors"] += 1
@@ -130,10 +143,12 @@ class PositionRepository:
                 if existing:
                     existing.title = title
                     existing.company = company
+                    if source:
+                        existing.source = source
                     existing.updated_at = datetime.now(timezone.utc)
                     stats["updated"] += 1
                 else:
-                    new_pos = Position(title=title, link=link, company=company)
+                    new_pos = Position(title=title, link=link, company=company, source=source)
                     self.db.add(new_pos)
                     stats["inserted"] += 1
                     

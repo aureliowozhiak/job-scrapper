@@ -1,12 +1,12 @@
 """Scraping task for RQ."""
 
 
-def task_scraper():
+def task_scraper(query=None, region=None, config=None):
     """Execute integrated scraping process using Scrapy."""
     try:
         from src.etl.scrapy_runner import run_integrated_scraper
         
-        stats = run_integrated_scraper()
+        stats = run_integrated_scraper(config=config, query=query, region=region)
         
         return {
             "status": "completed",

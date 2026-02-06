@@ -21,6 +21,7 @@ class JobSchema(JobBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    source: Optional[str] = None
     
     model_config = {"from_attributes": True}
 

@@ -9,9 +9,18 @@ class WeWorkRemotelySpider(scrapy.Spider):
     allowed_domains = ["weworkremotely.com"]
 
     def start_requests(self):
-        """Generate initial requests with search query."""
+        """Generate initial requests with search query and filters."""
         search_term = getattr(self, "query", "data+engineer")
+        region = getattr(self, "region", None)
+        category = getattr(self, "category", None)
+        
         url = f"https://weworkremotely.com/remote-jobs/search?term={search_term}"
+        
+        if region:
+            url += f"&region[]={region}"
+        if category:
+            url += f"&category[]={category}"
+            
         yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):

@@ -1,6 +1,6 @@
 """Admin and control routes for managing scraping jobs."""
 from fastapi import APIRouter, HTTPException
-from typing import List
+from typing import List, Optional, Dict, Any
 from src.jobs.manager import job_manager
 from src.schemas.status import JobStatusResponse, PipelineResponse, QueueStatusResponse
 
@@ -8,13 +8,17 @@ router = APIRouter()
 
 
 @router.post("/scrape", response_model=JobStatusResponse)
-async def trigger_scrape():
-    """Trigger scraping job."""
+async def trigger_scrape(params: Optional[Dict[str, Any]] = None):
+    """Trigger scraping job with optional filters."""
     try:
-        job_id = job_manager.enqueue_scraper()
+        query = params.get("query") if params else None
+        region = params.get("region") if params else None
+        config = params.get("config") if params else None
+        
+        job_id = job_manager.enqueue_scraper(query=query, region=region, config=config)
         return JobStatusResponse(
             job_id=job_id,
-            message="Scraping job enqueued",
+            message=f"Scraping job enqueued (query: {query or 'default'})",
             status="queued"
         )
     except Exception as e:
@@ -64,13 +68,17 @@ async def trigger_sync_check():
 
 
 @router.post("/pipeline", response_model=PipelineResponse)
-async def trigger_pipeline():
-    """Trigger full pipeline (scrape -> load -> validate)."""
+async def trigger_pipeline(params: Optional[Dict[str, Any]] = None):
+    """Trigger full pipeline (scrape -> load -> validate) with optional filters."""
     try:
-        job_ids = job_manager.enqueue_pipeline()
+        query = params.get("query") if params else None
+        region = params.get("region") if params else None
+        config = params.get("config") if params else None
+        
+        job_ids = job_manager.enqueue_pipeline(query=query, region=region, config=config)
         return PipelineResponse(
             job_ids=job_ids,
-            message="Pipeline enqueued",
+            message=f"Pipeline enqueued (query: {query or 'default'})",
             steps=["scraper", "loader", "validator"]
         )
     except Exception as e:
@@ -105,3 +113,13 @@ async def clear_failed_jobs():
     """Clear all failed jobs from the queue."""
     job_manager.clear_failed_jobs()
     return {"message": "Failed jobs cleared"}
+
+
+@router.get("/sources")
+async def get_sources():
+    """Get all available scraping sources/spiders."""
+    try:
+        from src.etl.scrapy_runner import SPIDER_CONFIG
+        return SPIDER_CONFIG
+    except ImportError:
+        return {}

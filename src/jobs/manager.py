@@ -15,12 +15,15 @@ class JobManager:
         self.redis = Redis.from_url(settings.redis_url)
         self.queue = Queue('default', connection=self.redis)
     
-    def enqueue_scraper(self) -> str:
+    def enqueue_scraper(self, query: Optional[str] = None, region: Optional[str] = None, config: Optional[Dict] = None) -> str:
         """Enqueue scraping task."""
         from src.jobs.task_scraper import task_scraper
         
         job = self.queue.enqueue(
             task_scraper,
+            query=query,
+            region=region,
+            config=config,
             job_timeout=settings.job_timeout,
             result_ttl=settings.job_result_ttl,
             job_id=f"scraper-{self._get_timestamp()}"
@@ -63,7 +66,7 @@ class JobManager:
         )
         return job.id
     
-    def enqueue_pipeline(self) -> List[str]:
+    def enqueue_pipeline(self, query: Optional[str] = None, region: Optional[str] = None, config: Optional[Dict] = None) -> List[str]:
         """Enqueue full pipeline (scraper -> loader -> validator)."""
         from src.jobs.task_scraper import task_scraper
         from src.jobs.task_loader import task_loader
@@ -74,6 +77,9 @@ class JobManager:
         # Enqueue scraper
         scraper_job = self.queue.enqueue(
             task_scraper,
+            query=query,
+            region=region,
+            config=config,
             job_timeout=settings.job_timeout,
             result_ttl=settings.job_result_ttl,
             job_id=f"pipeline-scraper-{self._get_timestamp()}"
@@ -107,12 +113,19 @@ class JobManager:
         try:
             job = Job.fetch(job_id, connection=self.redis)
             
+            # Calculate duration
+            duration = None
+            if job.started_at:
+                end_time = job.ended_at or datetime.now(timezone.utc)
+                duration = round((end_time - job.started_at).total_seconds(), 2)
+            
             return {
                 "id": job.id,
                 "status": job.get_status(),
                 "result": job.result,
                 "started_at": job.started_at.isoformat() if job.started_at else None,
                 "ended_at": job.ended_at.isoformat() if job.ended_at else None,
+                "duration": duration,
                 "exc_info": job.exc_info if job.is_failed else None
             }
         except Exception as e:
@@ -133,9 +146,10 @@ class JobManager:
             "started": len(started_registry),
             "finished": len(finished_registry),
             "failed": len(failed_registry),
+            "queued_jobs": list(self.queue.get_job_ids()),
             "started_jobs": list(started_registry.get_job_ids()),
-            "finished_jobs": list(finished_registry.get_job_ids())[-10:],  # Last 10
-            "failed_jobs": list(failed_registry.get_job_ids())[-10:]  # Last 10
+            "finished_jobs": list(finished_registry.get_job_ids())[-50:],  # Last 50
+            "failed_jobs": list(failed_registry.get_job_ids())[-50:]  # Last 50
         }
     
     def cancel_job(self, job_id: str) -> bool:

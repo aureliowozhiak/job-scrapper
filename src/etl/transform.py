@@ -42,14 +42,21 @@ class Transform:
         logger.info(f"Extracting jobs from {site_source}")
         
         try:
+            jobs = []
             match site_source:
                 case "weworkremotely":
-                    return self.handleWeWorkRemotely(soup)
+                    jobs = self.handleWeWorkRemotely(soup)
                 case "skipthedrive":
-                    return self.handleSkipTheDrive(soup)
+                    jobs = self.handleSkipTheDrive(soup)
                 case _:
                     logger.warning(f"Unknown site source: {site_source}")
                     return []
+            
+            # Inject source name into each job
+            for job in jobs:
+                job['source'] = site_source
+                
+            return jobs
         except Exception as e:
             logger.error(f"Error extracting jobs from {site_source}: {e}", exc_info=True)
             return []

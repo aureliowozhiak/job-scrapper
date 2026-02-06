@@ -26,14 +26,15 @@ async def search_jobs(
 async def list_jobs(
     search: Optional[str] = None,
     company: Optional[str] = None,
+    source: Optional[str] = None,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db)
 ):
     """List all jobs with optional filters."""
     repo = PositionRepository(db)
-    positions = repo.get_all(limit=limit, offset=offset, search=search, company=company)
-    total = repo.count(search=search, company=company)
+    positions = repo.get_all(limit=limit, offset=offset, search=search, company=company, source=source)
+    total = repo.count(search=search, company=company, source=source)
     
     return JobList(
         jobs=[Job.model_validate(p) for p in positions],

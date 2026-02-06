@@ -2,36 +2,63 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import subprocess
 import tempfile
 from src.core.logging import get_logger
 from src.database.connection import SessionLocal
 from src.database.models import Position
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger(__name__)
 
-# Search queries for job scraping - limited set for efficiency
+# Search queries for job scraping
 QUERIES = [
+    "data analytics",
     "data engineer",
     "data scientist",
+    "data analyst",
+    "machine learning engineer",
+    "business intelligence analyst",
+    "ETL developer",
+    "big data engineer",
+    "database administrator",
+    "SQL developer",
+    "Python developer data",
+    "AI engineer",
+    "cloud data engineer",
+    "data architect",
+    "BI developer",
+    "data warehouse specialist",
+    "analytics engineer",
+    "data governance specialist",
+    "quantitative analyst",
+    "data product manager"
 ]
 
-# Available spiders
-SPIDERS = [
-    "skipthedrive_jobs",
-]
+# Spider configuration: maps internal IDs to display names and search patterns
+SPIDER_CONFIG = {
+    "skipthedrive_jobs": {
+        "nice_name": "SkipTheDrive",
+        "domain": "skipthedrive.com"
+    },
+    "weworkremotely_jobs": {
+        "nice_name": "WeWorkRemotely",
+        "domain": "weworkremotely.com"
+    }
+}
+
+# Derived list of active spiders for the orchestration loop
+SPIDERS = list(SPIDER_CONFIG.keys())
 
 
-def normalize_scrapy_job(job: Dict[str, Any]) -> Dict[str, str]:
+def normalize_scrapy_job(job: Dict[str, Any], source: str = "unknown") -> Dict[str, str]:
     """
     Normalize Scrapy job data to database schema format.
     
-    Scrapy returns: job_title, company, post_date, qualifications, url
-    Database expects: title, company, link
-    
     Args:
         job: Raw job dict from Scrapy spider
+        source: Name of the spider/source
         
     Returns:
         Normalized job dict
@@ -39,41 +66,48 @@ def normalize_scrapy_job(job: Dict[str, Any]) -> Dict[str, str]:
     return {
         "title": job.get("job_title", "").strip(),
         "company": job.get("company", "").strip(),
-        "link": job.get("url", "").strip()
+        "link": job.get("url", "").strip(),
+        "source": source
     }
 
 
-def run_scrapy_spider_subprocess(spider_name: str, query: str, output_file: str) -> bool:
+def run_scrapy_spider_subprocess(spider_name: str, output_file: str, **kwargs) -> bool:
     """
-    Run a Scrapy spider using subprocess.
+    Run a Scrapy spider using subprocess with dynamic arguments.
     
     Args:
         spider_name: Name of the spider to run
-        query: Search query parameter
         output_file: Path to save JSON output
+        **kwargs: Arguments to pass to the spider (-a key=value)
         
     Returns:
         True if successful, False otherwise
     """
     try:
-        normalized_query = query.replace(" ", "+")
+        # Build command
+        cmd = ["scrapy", "crawl", spider_name]
         
-        # Run scrapy from jobfinder_bot directory
-        cmd = [
-            "scrapy", "crawl", spider_name,
-            "-a", f"query={normalized_query}",
+        # Add dynamic arguments
+        for key, value in kwargs.items():
+            if value:
+                # Normalize query if it's the query key
+                if key == "query":
+                    value = value.replace(" ", "+")
+                cmd.extend(["-a", f"{key}={value}"])
+        
+        cmd.extend([
             "-O", output_file,
-            "--loglevel=ERROR"  # Only show errors
-        ]
+            "--loglevel=ERROR"
+        ])
         
-        logger.info(f"Running spider '{spider_name}' with query '{query}'")
+        logger.info(f"Running spider '{spider_name}' with args: {kwargs}")
         
         result = subprocess.run(
             cmd,
-            cwd="jobfinder_bot",
+            cwd="src/spiders",
             capture_output=True,
             text=True,
-            timeout=180  # 3 minute timeout per query (with 3 pages limit)
+            timeout=180
         )
         
         if result.returncode == 0:
@@ -149,12 +183,13 @@ def load_jobs_to_database(jobs: List[Dict[str, str]]) -> Dict[str, int]:
                         title=title,
                         link=link,
                         company=company,
+                        source=job_data.get("source"),
                         created_at=datetime.now(timezone.utc),
                         updated_at=datetime.now(timezone.utc)
                     )
                     session.add(position)
                     stats["inserted"] += 1
-                    logger.debug(f"Inserted: {title} at {company}")
+                    logger.debug(f"Inserted: {title} at {company} (Source: {job_data.get('source')})")
                     
             except Exception as e:
                 logger.error(f"Error processing job: {e}")
@@ -162,6 +197,14 @@ def load_jobs_to_database(jobs: List[Dict[str, str]]) -> Dict[str, int]:
                 session.rollback()
                 continue
         
+        # Final cleanup: Fix any remaining 'unknown' sources based on URL patterns
+        # This uses the dynamic SPIDER_CONFIG to match domains to display names
+        for spider_id, cfg in SPIDER_CONFIG.items():
+            session.query(Position).filter(
+                (Position.source == "unknown") | (Position.source == None),
+                Position.link.contains(cfg["domain"])
+            ).update({"source": cfg["nice_name"]}, synchronize_session=False)
+
         # Commit all changes
         session.commit()
         logger.info(f"Database load complete: {stats}")
@@ -176,17 +219,12 @@ def load_jobs_to_database(jobs: List[Dict[str, str]]) -> Dict[str, int]:
     return stats
 
 
-def run_integrated_scraper() -> Dict[str, Any]:
+def run_integrated_scraper(config: Optional[Dict[str, Any]] = None, **legacy_kwargs) -> Dict[str, Any]:
     """
-    Execute the complete integrated scraping process using Scrapy.
-    
-    This replaces the old ETL process with a direct Scrapy → Database pipeline.
-    
-    Returns:
-        Statistics about the scraping and loading process
+    Execute the complete integrated scraping process using Scrapy in parallel.
     """
     logger.info("=" * 60)
-    logger.info("STARTING INTEGRATED SCRAPY SCRAPING PROCESS")
+    logger.info("STARTING PARALLEL INTEGRATED SCRAPY PROCESS")
     logger.info("=" * 60)
     
     total_jobs_scraped = 0
@@ -195,121 +233,121 @@ def run_integrated_scraper() -> Dict[str, Any]:
     total_errors = 0
     queries_processed = 0
     spiders_stats = {}
-    
-    # Process each spider
-    for spider_name in SPIDERS:
-        logger.info(f"Processing spider: {spider_name}")
-        spider_stats = {
-            "jobs_scraped": 0,
-            "jobs_loaded": 0,
-            "duplicates": 0,
-            "errors": 0,
-            "queries": 0
+
+    # Backward compatibility: convert legacy single-params to a config
+    if not config and (legacy_kwargs.get("query") or legacy_kwargs.get("region")):
+        config = {
+            "spiders": {
+                s: {
+                    "queries": [legacy_kwargs.get("query")] if legacy_kwargs.get("query") else QUERIES,
+                    "region": legacy_kwargs.get("region")
+                } for s in SPIDERS
+            }
         }
-        
-        # Process each query for this spider
-        for idx, query in enumerate(QUERIES, 1):
-            logger.info(f"[{spider_name}] Query {idx}/{len(QUERIES)}: '{query}'")
-            
-            # Create temporary file for this query's results
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
-                temp_output = tmp.name
-            
-            try:
-                # Run Scrapy spider
-                success = run_scrapy_spider_subprocess(spider_name, query, temp_output)
-                
-                if not success:
-                    logger.warning(f"Failed to scrape '{query}' with {spider_name}")
-                    Path(temp_output).unlink(missing_ok=True)
-                    continue
-                
-                # Load and normalize scraped data
-                try:
-                    if not Path(temp_output).exists() or Path(temp_output).stat().st_size < 10:
-                        logger.info(f"No data scraped for '{query}' on {spider_name}")
-                        spider_stats["queries"] += 1
-                        continue
-                    
-                    with open(temp_output, 'r', encoding='utf-8') as f:
-                        scraped_jobs = json.load(f)
-                    
-                    if not scraped_jobs:
-                        logger.info(f"No jobs found for query '{query}' on {spider_name}")
-                        spider_stats["queries"] += 1
-                        continue
-                    
-                    # Normalize job data for database
-                    normalized_jobs = [normalize_scrapy_job(job) for job in scraped_jobs]
-                    
-                    # Filter out invalid jobs
-                    valid_jobs = [
-                        job for job in normalized_jobs 
-                        if job["title"] and job["company"] and job["link"] and job["link"] != "N/A"
-                    ]
-                    
-                    jobs_scraped = len(valid_jobs)
-                    spider_stats["jobs_scraped"] += jobs_scraped
-                    
-                    logger.info(f"Scraped {jobs_scraped} valid jobs for '{query}' from {spider_name}")
-                    
-                    # Load into database
-                    if valid_jobs:
-                        load_stats = load_jobs_to_database(valid_jobs)
-                        spider_stats["jobs_loaded"] += load_stats["inserted"]
-                        spider_stats["duplicates"] += load_stats["duplicates"]
-                        spider_stats["errors"] += load_stats["errors"]
-                        
-                        logger.info(
-                            f"Loaded {load_stats['inserted']} new jobs, "
-                            f"{load_stats['duplicates']} duplicates, "
-                            f"{load_stats['errors']} errors"
-                        )
-                    
-                    spider_stats["queries"] += 1
-                    
-                except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON from spider for query '{query}': {e}")
-                except Exception as e:
-                    logger.error(f"Error processing scraped data for '{query}': {e}", exc_info=True)
-                finally:
-                    # Clean up temp file
-                    Path(temp_output).unlink(missing_ok=True)
-                    
-            except Exception as e:
-                logger.error(f"Unexpected error processing query '{query}' with {spider_name}: {e}", exc_info=True)
-        
-        # Store spider stats
-        spiders_stats[spider_name] = spider_stats
-        total_jobs_scraped += spider_stats["jobs_scraped"]
-        total_jobs_loaded += spider_stats["jobs_loaded"]
-        total_duplicates += spider_stats["duplicates"]
-        total_errors += spider_stats["errors"]
-        queries_processed += spider_stats["queries"]
-        
-        logger.info(f"Spider {spider_name} complete: {spider_stats}")
+
+    # Determine which spiders to run
+    active_spiders = SPIDERS
+    if config and "spiders" in config:
+        active_spiders = list(config["spiders"].keys())
     
-    # Final summary
-    stats = {
+    # We will parallelize the scraping phase first, then load the data
+    # This avoids SQLite lock contention
+    tasks = []
+    
+    for spider_name in active_spiders:
+        if spider_name not in SPIDERS:
+            logger.warning(f"Skipping unknown spider: {spider_name}")
+            continue
+
+        spider_mission = config["spiders"].get(spider_name, {}) if config else {}
+        spider_queries = spider_mission.get("queries") or QUERIES
+        spider_params = {k: v for k, v in spider_mission.items() if k != "queries"}
+        
+        spiders_stats[spider_name] = {
+            "jobs_scraped": 0, "jobs_loaded": 0, "duplicates": 0, "errors": 0, "queries": 0
+        }
+
+        for query in spider_queries:
+            tasks.append({
+                "spider": spider_name,
+                "query": query,
+                "params": {**spider_params, "query": query}
+            })
+
+    logger.info(f"Total tasks to execute in parallel: {len(tasks)}")
+    
+    # Phase 1: Scraping (Parallel)
+    # Use ThreadPoolExecutor to run subprocesses concurrently
+    def perform_scrape(task):
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
+            temp_output = tmp.name
+        
+        try:
+            success = run_scrapy_spider_subprocess(task["spider"], temp_output, **task["params"])
+            if success and Path(temp_output).exists() and Path(temp_output).stat().st_size > 10:
+                with open(temp_output, 'r', encoding='utf-8') as f:
+                    scraped_jobs = json.load(f)
+                return {"task": task, "success": True, "jobs": scraped_jobs}
+            else:
+                return {"task": task, "success": False, "jobs": []}
+        except Exception as e:
+            logger.error(f"Scrape task failed for {task['spider']} - {task['query']}: {e}")
+            return {"task": task, "success": False, "jobs": [], "error": str(e)}
+        finally:
+            Path(temp_output).unlink(missing_ok=True)
+
+    results = []
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_task = {executor.submit(perform_scrape, task): task for task in tasks}
+        for future in as_completed(future_to_task):
+            results.append(future.result())
+
+    # Phase 2: Loading (Sequential to avoid DB locks)
+    for res in results:
+        task = res["task"]
+        spider_name = task["spider"]
+        
+        if not res["success"] or not res["jobs"]:
+            if res.get("error"):
+                spiders_stats[spider_name]["errors"] += 1
+            spiders_stats[spider_name]["queries"] += 1
+            continue
+
+        try:
+            nice_source = SPIDER_CONFIG.get(spider_name, {}).get("nice_name", spider_name)
+            normalized_jobs = [normalize_scrapy_job(job, source=nice_source) for job in res["jobs"]]
+            valid_jobs = [j for j in normalized_jobs if j["title"] and j["company"] and j["link"] != "N/A"]
+            
+            jobs_scraped = len(valid_jobs)
+            spiders_stats[spider_name]["jobs_scraped"] += jobs_scraped
+            
+            if valid_jobs:
+                load_stats = load_jobs_to_database(valid_jobs)
+                spiders_stats[spider_name]["jobs_loaded"] += load_stats["inserted"]
+                spiders_stats[spider_name]["duplicates"] += load_stats["duplicates"]
+                spiders_stats[spider_name]["errors"] += load_stats["errors"]
+            
+            spiders_stats[spider_name]["queries"] += 1
+            queries_processed += 1
+        except Exception as e:
+            logger.error(f"Error loading results for {spider_name}: {e}")
+            spiders_stats[spider_name]["errors"] += 1
+
+    # Aggregate stats
+    for s_name, s_stats in spiders_stats.items():
+        total_jobs_scraped += s_stats["jobs_scraped"]
+        total_jobs_loaded += s_stats["jobs_loaded"]
+        total_duplicates += s_stats["duplicates"]
+        total_errors += s_stats["errors"]
+
+    return {
         "queries_processed": queries_processed,
-        "queries_total": len(QUERIES) * len(SPIDERS),
         "jobs_scraped": total_jobs_scraped,
         "jobs_loaded": total_jobs_loaded,
         "duplicates": total_duplicates,
         "errors": total_errors,
         "spiders": spiders_stats
     }
-    
-    logger.info("=" * 60)
-    logger.info("INTEGRATED SCRAPING PROCESS COMPLETE")
-    logger.info(f"Total queries processed: {queries_processed}/{len(QUERIES) * len(SPIDERS)}")
-    logger.info(f"Total jobs scraped: {total_jobs_scraped}")
-    logger.info(f"Total jobs loaded (new): {total_jobs_loaded}")
-    logger.info(f"Total duplicates skipped: {total_duplicates}")
-    logger.info(f"Total errors: {total_errors}")
-    logger.info("=" * 60)
-    
-    return stats
 
 
 if __name__ == "__main__":

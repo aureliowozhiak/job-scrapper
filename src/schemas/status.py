@@ -85,6 +85,7 @@ class QueueStatusResponse(BaseModel):
     started: int
     finished: int
     failed: int
+    queued_jobs: list[str] = []
     started_jobs: list[str]
     finished_jobs: list[str]
     failed_jobs: list[str]

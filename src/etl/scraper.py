@@ -5,6 +5,7 @@ import json
 from src.etl.extract import Extract
 from src.etl.transform import Transform
 from src.etl.utils import Utils
+from src.core.config import settings
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -67,8 +68,8 @@ def run_scraper() -> dict:
     utils = Utils()
     
     # Create directory structure
-    path = "lake"
-    output = "output"
+    path = str(settings.data_lake_path)
+    output = str(settings.output_path)
     
     try:
         utils.createDir(f"{path}")

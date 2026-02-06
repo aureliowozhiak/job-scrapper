@@ -17,7 +17,15 @@ class SkipTheDriveSpider(scrapy.Spider):
 
     def start_requests(self):
         search_term = getattr(self, "query", "data+engineer")
+        region = getattr(self, "region", None)
+        job_type = getattr(self, "job_type", None)
+        
         url = f"https://www.skipthedrive.com/?s={search_term}"
+        if region:
+            url += f"&search_region={region}"
+        if job_type:
+            url += f"&job_type={job_type}"
+            
         self.pages_crawled = 0
         yield scrapy.Request(url=url, callback=self.parse)
 
@@ -40,8 +48,15 @@ class SkipTheDriveSpider(scrapy.Spider):
         
         current_page = int(response.url.split("/page/")[1].split("/")[0]) if "/page/" in response.url else 1
         search_term = getattr(self, "query", "data+engineer")
+        region = getattr(self, "region", None)
+        job_type = getattr(self, "job_type", None)
+        
         next_page = current_page + 1
         next_page_url = f"https://www.skipthedrive.com/page/{next_page}/?s={search_term}"
+        if region:
+            next_page_url += f"&search_region={region}"
+        if job_type:
+            next_page_url += f"&job_type={job_type}"
 
         # Check if there are job links on the current page to decide if we should continue
         if job_links:
