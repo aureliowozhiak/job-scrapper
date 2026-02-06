@@ -55,7 +55,21 @@ class JobStats(BaseModel):
     """Database statistics."""
     total_jobs: int
     total_companies: int
+    total_sources: int = 0
     last_updated: Optional[datetime] = None
+
+
+class WordFrequencyItem(BaseModel):
+    """Single word frequency item."""
+    text: str
+    count: int
+
+
+class WordFrequencyResponse(BaseModel):
+    """Word frequency analysis response."""
+    single_words: List[WordFrequencyItem]
+    two_word_phrases: List[WordFrequencyItem]
+    three_word_phrases: List[WordFrequencyItem]
 
 
 # Aliases for backward compatibility

@@ -486,6 +486,9 @@
                 <button class="tab-btn" onclick="switchTab('tasks')">
                     <i class="fas fa-microchip"></i> Task Manager
                 </button>
+                <button class="tab-btn" onclick="switchTab('health')">
+                    <i class="fas fa-heartbeat"></i> Health Monitor
+                </button>
             </div>
         </div>
         <!-- No search tab button here -->
@@ -512,7 +515,7 @@
                     <div class="stat-label">Companies</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-val">2</div>
+                    <div class="stat-val">{{ stats.total_sources }}</div>
                     <div class="stat-label">Active Sources</div>
                 </div>
             </div>
@@ -560,6 +563,25 @@
             </div>
 
             <div id="pagination" class="pagination"></div>
+
+            <!-- Word Statistics Panel -->
+            <div style="margin-top: 40px; background: var(--bg-card); padding: 25px; border-radius: 12px; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h4 style="margin: 0; font-size: 16px; color: var(--text-main);">
+                        <i class="fas fa-chart-bar" style="margin-right: 8px; color: var(--primary);"></i> Job Title Word Analysis
+                    </h4>
+                    <button onclick="loadWordStatistics()" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                
+                <div id="word-stats-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div style="text-align:center; padding:40px; color:var(--text-muted); grid-column: 1 / -1;">
+                        <i class="fas fa-circle-notch fa-spin" style="margin-bottom: 10px;"></i>
+                        <div>Loading word statistics...</div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Sync Status Panel (Lower Priority) -->
             {% if sync_status and sync_status.checked and sync_status.data %}
@@ -682,6 +704,80 @@
             </div>
         </div>
 
+        <!-- TAB 4: HEALTH MONITOR -->
+        <div id="tab-health" class="tab-content">
+            <div class="stats-grid" style="margin-bottom: 30px;">
+                <div class="stat-card">
+                    <div class="stat-val" id="health-system-status" style="color: #10b981;">●</div>
+                    <div class="stat-label">System Status</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="health-active-scrapers">0</div>
+                    <div class="stat-label">Active Scrapers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="health-total-jobs">0</div>
+                    <div class="stat-label">Total Jobs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" id="health-db-status">⚫</div>
+                    <div class="stat-label">Database</div>
+                </div>
+            </div>
+
+            <!-- System Health Panel -->
+            <div style="background: var(--bg-card); padding: 25px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h4 style="margin: 0; font-size: 16px; color: var(--text-main);">
+                        <i class="fas fa-server" style="margin-right: 8px; color: var(--primary);"></i> System Components
+                    </h4>
+                    <button onclick="refreshHealthData()" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Database</span>
+                            <span id="health-db-indicator" style="font-size: 20px;">●</span>
+                        </div>
+                        <div id="health-db-details" style="font-size: 12px; color: var(--text-main);"></div>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Redis Queue</span>
+                            <span id="health-redis-indicator" style="font-size: 20px;">●</span>
+                        </div>
+                        <div id="health-redis-details" style="font-size: 12px; color: var(--text-main);"></div>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Queue Status</span>
+                            <span id="health-queue-indicator" style="font-size: 20px;">●</span>
+                        </div>
+                        <div id="health-queue-details" style="font-size: 12px; color: var(--text-main);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrapers Health Panel -->
+            <div style="background: var(--bg-card); padding: 25px; border-radius: 12px; border: 1px solid var(--border);">
+                <h4 style="margin-top: 0; font-size: 16px; color: var(--text-main); margin-bottom: 20px;">
+                    <i class="fas fa-spider" style="margin-right: 8px; color: var(--primary);"></i> Scraper Health
+                </h4>
+
+                <div id="scrapers-health-container" class="table-container">
+                    <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                        <i class="fas fa-circle-notch fa-spin" style="margin-bottom: 10px;"></i>
+                        <div>Loading scraper metrics...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
     </div><!-- End Container -->
 
@@ -698,19 +794,28 @@
             }
 
             // Show selected
-            document.getElementById('tab-' + tabName).classList.add('active');
+            const tabElement = document.getElementById('tab-' + tabName);
+            if (tabElement) {
+                tabElement.classList.add('active');
+            } else {
+                console.error('Tab not found:', tabName);
+                return;
+            }
 
             // Active button state
             const buttons = document.querySelectorAll('.tab-btn');
-            if (tabName === 'dashboard') buttons[0].classList.add('active');
+            if (tabName === 'dashboard') {
+                buttons[0].classList.add('active');
+                if (allJobs.length === 0) loadAllJobs(); // Load data on first view
+            }
             if (tabName === 'tasks') {
                 buttons[1].classList.add('active');
                 connectTaskWebSocket();
                 refreshTaskStatus(); // Initial load
             }
-            if (tabName === 'browse') {
+            if (tabName === 'health') {
                 buttons[2].classList.add('active');
-                if (allJobs.length === 0) loadAllJobs(); // Load data on first view
+                refreshHealthData(); // Load health data
             }
 
             // Save state
@@ -720,8 +825,9 @@
         function initApp() {
             // Restore tab state or default to dashboard
             const savedTab = localStorage.getItem('activeTab') || 'dashboard';
-            // Only dashboard or tasks are valid now
-            const finalTab = (savedTab === 'tasks') ? 'tasks' : 'dashboard';
+            // Valid tabs: dashboard, tasks, health
+            const validTabs = ['dashboard', 'tasks', 'health'];
+            const finalTab = validTabs.includes(savedTab) ? savedTab : 'dashboard';
             switchTab(finalTab);
 
             // Meta data discovery
@@ -736,6 +842,7 @@
 
         // --- TASK MANAGER ---
         let taskWebSocket = null;
+        let expandedGroups = new Set();
 
         function connectTaskWebSocket() {
             if (taskWebSocket && taskWebSocket.readyState === WebSocket.OPEN) {
@@ -785,6 +892,10 @@
                 ...(status.finished_jobs || [])
             ];
 
+            // Check if data has actually changed
+            const currentIds = allTasksHistory.map(t => t.id).sort().join(',');
+            const newIdsStr = newIds.sort().join(',');
+            
             // Map IDs to objects with state
             const idStateMap = {};
             (status.started_jobs || []).forEach(id => idStateMap[id] = 'running');
@@ -815,8 +926,11 @@
                 };
             });
 
-            sortTasks();
-            renderTasks();
+            // Only re-render if data actually changed
+            if (currentIds !== newIdsStr) {
+                sortTasks();
+                renderTasks();
+            }
         }
 
         function sortTasks(col) {
@@ -874,8 +988,90 @@
                 return;
             }
 
+            // Group pipeline tasks
+            const pipelineGroups = {};
+            const standaloneTasks = [];
+            
+            allTasksHistory.forEach(task => {
+                const match = task.id.match(/^pipeline-(scraper|loader|validator)-(\d+)$/);
+                if (match) {
+                    const groupId = match[2];
+                    if (!pipelineGroups[groupId]) {
+                        pipelineGroups[groupId] = { scraper: null, loader: null, validator: null };
+                    }
+                    pipelineGroups[groupId][match[1]] = task;
+                } else {
+                    standaloneTasks.push(task);
+                }
+            });
+
+            // Convert groups to ordered list with group metadata
+            const groupedTasks = [];
+            Object.keys(pipelineGroups).forEach(groupId => {
+                const group = pipelineGroups[groupId];
+                const tasks = [group.scraper, group.loader, group.validator].filter(t => t);
+                
+                // Determine group status
+                let groupStatus = 'finished';
+                let groupStarted = null;
+                let groupEnded = null;
+                let groupDuration = 0;
+                
+                if (tasks.some(t => t.state === 'failed')) groupStatus = 'failed';
+                else if (tasks.some(t => t.state === 'running')) groupStatus = 'running';
+                else if (tasks.some(t => t.state === 'queued')) groupStatus = 'queued';
+                
+                tasks.forEach(t => {
+                    if (t.started_at && (!groupStarted || t.started_at < groupStarted)) groupStarted = t.started_at;
+                    if (t.ended_at && (!groupEnded || t.ended_at > groupEnded)) groupEnded = t.ended_at;
+                    groupDuration += t.duration || 0;
+                });
+                
+                groupedTasks.push({
+                    id: `pipeline-${groupId}`,
+                    isGroup: true,
+                    groupId: groupId,
+                    state: groupStatus,
+                    started_at: groupStarted,
+                    ended_at: groupEnded,
+                    duration: groupDuration,
+                    tasks: tasks
+                });
+            });
+
+            // Merge standalone and grouped tasks, then sort
+            const allDisplayTasks = [...groupedTasks, ...standaloneTasks];
+            
+            // Apply sorting
+            allDisplayTasks.sort((a, b) => {
+                let valA = a[tasksSortCol];
+                let valB = b[tasksSortCol];
+                
+                if (tasksSortCol === 'id') {
+                    const getSortableId = (item) => {
+                        if (item.isGroup) return item.groupId;
+                        const parts = item.id.split('-');
+                        return parts[parts.length - 1];
+                    };
+                    valA = getSortableId(a);
+                    valB = getSortableId(b);
+                }
+                
+                if (valA === null) valA = tasksSortDir === 'asc' ? 'ZZZ' : '000';
+                if (valB === null) valB = tasksSortDir === 'asc' ? 'ZZZ' : '000';
+                
+                if (tasksSortDir === 'desc') {
+                    if (valA < valB) return 1;
+                    if (valA > valB) return -1;
+                } else {
+                    if (valA < valB) return -1;
+                    if (valA > valB) return 1;
+                }
+                return 0;
+            });
+
             const start = (tasksCurrentPage - 1) * tasksPageSize;
-            const pageTasks = allTasksHistory.slice(start, start + tasksPageSize);
+            const pageTasks = allDisplayTasks.slice(start, start + tasksPageSize);
 
             let html = `
                 <table>
@@ -893,69 +1089,235 @@
             `;
 
             for (const task of pageTasks) {
-                const job = tasksMetadata[task.id] || {};
+                if (task.isGroup) {
+                    // Render pipeline group row
+                    const formatDateTime = (dateStr) => {
+                        if (!dateStr) return '---';
+                        const d = new Date(dateStr);
+                        const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return `${date} ${time}`;
+                    };
+                    
+                    const startedStr = formatDateTime(task.started_at);
+                    const finishedStr = task.ended_at ? formatDateTime(task.ended_at) : (task.started_at ? '<span style="color:var(--primary); font-size:10px;">IN PROGRESS...</span>' : '---');
+                    const durationStr = task.duration ? `${task.duration.toFixed(2)}s` : '---';
+                    
+                    const isExpanded = expandedGroups.has(task.groupId);
+                    html += `
+                        <tr style="background: rgba(56, 189, 248, 0.03);">
+                            <td onclick="togglePipelineGroup('${task.groupId}', event)" style="cursor: pointer;">
+                                <div style="font-family: monospace; font-size: 13px; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                                    <i id="group-icon-${task.groupId}" class="fas fa-chevron-right" style="font-size: 10px; transition: transform 0.2s; transform: rotate(${isExpanded ? '90' : '0'}deg);"></i>
+                                    <i class="fas fa-layer-group" style="font-size: 10px; opacity: 0.5;"></i> 
+                                    Pipeline #${task.groupId}
+                                </div>
+                            </td>
+                            <td onclick="togglePipelineGroup('${task.groupId}', event)" style="cursor: pointer;">
+                                <span class="company-pill" style="
+                                    background: ${task.state === 'running' ? 'rgba(56, 189, 248, 0.15)' : (task.state === 'failed' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(16, 185, 129, 0.15)')};
+                                    color: ${task.state === 'running' ? 'var(--primary)' : (task.state === 'failed' ? '#ff5252' : '#10b981')};
+                                    font-size: 10px;
+                                    padding: 4px 10px;
+                                ">
+                                    <i class="fas ${task.state === 'running' ? 'fa-sync fa-spin' : (task.state === 'failed' ? 'fa-exclamation-triangle' : 'fa-check-double')}"></i>
+                                    ${task.state.toUpperCase()}
+                                </span>
+                            </td>
+                            <td onclick="togglePipelineGroup('${task.groupId}', event)" style="cursor: pointer;">
+                                <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
+                                    ${startedStr}
+                                </div>
+                            </td>
+                            <td onclick="togglePipelineGroup('${task.groupId}', event)" style="cursor: pointer;">
+                                <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
+                                    ${finishedStr}
+                                </div>
+                            </td>
+                            <td onclick="togglePipelineGroup('${task.groupId}', event)" style="cursor: pointer;">
+                                <div style="font-size: 12px; color: var(--primary); font-weight: 600;">
+                                    ${durationStr}
+                                </div>
+                            </td>
+                            <td style="text-align:right;" onclick="event.stopPropagation();">
+                                <span style="font-size: 11px; color: var(--text-muted);">
+                                    <i class="fas fa-tasks"></i> ${task.tasks.length} steps
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    
+                    // Render subtasks (initially hidden)
+                    task.tasks.forEach((subtask, idx) => {
+                        const job = tasksMetadata[subtask.id] || {};
+                        
+                        const formatDateTime = (dateStr) => {
+                            if (!dateStr) return '---';
+                            const d = new Date(dateStr);
+                            const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            return `${date} ${time}`;
+                        };
+                        
+                        const subStartedStr = formatDateTime(job.started_at);
+                        const subFinishedStr = job.ended_at ? formatDateTime(job.ended_at) : (job.started_at ? '<span style="color:var(--primary); font-size:10px;">RUNNING...</span>' : '---');
+                        const subDurationStr = (job.duration !== null && job.duration !== undefined) ? `${job.duration}s` : '---';
+                        
+                        const taskType = subtask.id.includes('scraper') ? 'Scrape' : (subtask.id.includes('loader') ? 'Load' : 'Validate');
+                        const taskIcon = subtask.id.includes('scraper') ? 'fa-spider' : (subtask.id.includes('loader') ? 'fa-database' : 'fa-check-circle');
+                        
+                        const subtaskDisplay = expandedGroups.has(task.groupId) ? 'table-row' : 'none';
+                        html += `
+                            <tr id="subtask-${task.groupId}-${idx}" class="pipeline-subtask" data-group="${task.groupId}" style="display: ${subtaskDisplay}; background: rgba(0,0,0,0.2);">
+                                <td>
+                                    <div style="font-family: monospace; font-size: 12px; color: var(--text-muted); padding-left: 30px;">
+                                        <i class="fas ${taskIcon}" style="font-size: 10px; opacity: 0.5; margin-right: 5px;"></i> 
+                                        ${taskType}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="company-pill" style="
+                                        background: ${subtask.state === 'running' ? 'rgba(56, 189, 248, 0.15)' : (subtask.state === 'failed' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(255,255,255,0.05)')};
+                                        color: ${subtask.state === 'running' ? 'var(--primary)' : (subtask.state === 'failed' ? '#ff5252' : 'var(--text-muted)')};
+                                        font-size: 9px;
+                                        padding: 3px 8px;
+                                    ">
+                                        <i class="fas ${subtask.state === 'running' ? 'fa-sync fa-spin' : (subtask.state === 'failed' ? 'fa-exclamation-triangle' : 'fa-check')}"></i>
+                                        ${subtask.state.toUpperCase()}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="font-size: 11px; color: var(--text-main);">
+                                        ${subStartedStr}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 11px; color: var(--text-main);">
+                                        ${subFinishedStr}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 11px; color: var(--primary); font-weight: 600;">
+                                        ${subDurationStr}
+                                    </div>
+                                </td>
+                                <td style="text-align:right;">
+                                    ${subtask.state === 'failed' ?
+                                        `<button onclick="event.stopPropagation(); alert('Error: ${(job.exc_info?.split('\n')[0] || 'Unknown error').replace(/'/g, "\\'")}');" class="btn btn-secondary" style="padding: 3px 10px; font-size: 10px; color:#ff5252; border-color: rgba(255, 82, 82, 0.2);">
+                                            <i class="fas fa-terminal"></i> Log
+                                        </button>` :
+                                        `<i class="fas fa-${subtask.state === 'finished' ? 'check-circle' : 'clock'}" style="color: ${subtask.state === 'finished' ? '#10b981' : 'var(--text-muted)'}; font-size: 12px;"></i>`
+                                    }
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    // Render standalone task
+                    const job = tasksMetadata[task.id] || {};
+                    
+                    const formatDateTime = (dateStr) => {
+                        if (!dateStr) return '---';
+                        const d = new Date(dateStr);
+                        const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return `${date} ${time}`;
+                    };
+                    
+                    const startedStr = formatDateTime(job.started_at);
+                    const finishedStr = job.ended_at ? formatDateTime(job.ended_at) : (job.started_at ? '<span style="color:var(--primary); font-size:10px;">RUNNING...</span>' : '---');
+                    const durationStr = (job.duration !== null && job.duration !== undefined) ? `${job.duration}s` : '---';
 
-                const startedStr = job.started_at ? new Date(job.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---';
-                const finishedStr = job.ended_at ? new Date(job.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (job.started_at ? '<span style="color:var(--primary); font-size:10px;">RUNNING...</span>' : '---');
-                const durationStr = (job.duration !== null && job.duration !== undefined) ? `${job.duration}s` : '---';
-
-                html += `
-                    <tr>
-                        <td>
-                            <div style="font-family: monospace; font-size: 13px; color: var(--primary);">
-                                <i class="fas fa-hashtag" style="font-size: 10px; opacity: 0.5;"></i> ${task.id}
-                            </div>
-                        </td>
-                        <td>
-                            <span class="company-pill" style="
-                                background: ${task.state === 'running' ? 'rgba(56, 189, 248, 0.15)' : (task.state === 'failed' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(255,255,255,0.05)')};
-                                color: ${task.state === 'running' ? 'var(--primary)' : (task.state === 'failed' ? '#ff5252' : 'var(--text-muted)')};
-                                font-size: 10px;
-                                padding: 4px 10px;
-                            ">
-                                <i class="fas ${task.state === 'running' ? 'fa-sync fa-spin' : (task.state === 'failed' ? 'fa-exclamation-triangle' : 'fa-check')}"></i>
-                                ${task.state.toUpperCase()}
-                            </span>
-                        </td>
-                        <td>
-                            <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
-                                ${startedStr}
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
-                                ${finishedStr}
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-size: 12px; color: var(--primary); font-weight: 600;">
-                                ${durationStr}
-                            </div>
-                        </td>
-                        <td style="text-align:right;">
-                            ${task.state === 'running' || task.state === 'queued' ?
-                        `<button onclick="cancelJob('${task.id}')" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px;">
-                                    <i class="fas fa-stop"></i> Abort
-                                </button>` :
-                        (task.state === 'failed' ?
-                            `<button onclick="alert('Error: ${job.exc_info?.split('\n')[0] || 'Unknown error'}')" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px; color:#ff5252; border-color: rgba(255, 82, 82, 0.2);">
-                                    <i class="fas fa-terminal"></i> Log
-                                </button>` :
-                            `<i class="fas fa-check-circle" style="color: #10b981; font-size: 14px;"></i>`)
-                    }
-                        </td>
-                    </tr>
-                `;
+                    html += `
+                        <tr>
+                            <td>
+                                <div style="font-family: monospace; font-size: 13px; color: var(--primary);">
+                                    <i class="fas fa-hashtag" style="font-size: 10px; opacity: 0.5;"></i> ${task.id}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="company-pill" style="
+                                    background: ${task.state === 'running' ? 'rgba(56, 189, 248, 0.15)' : (task.state === 'failed' ? 'rgba(255, 82, 82, 0.15)' : 'rgba(255,255,255,0.05)')};
+                                    color: ${task.state === 'running' ? 'var(--primary)' : (task.state === 'failed' ? '#ff5252' : 'var(--text-muted)')};
+                                    font-size: 10px;
+                                    padding: 4px 10px;
+                                ">
+                                    <i class="fas ${task.state === 'running' ? 'fa-sync fa-spin' : (task.state === 'failed' ? 'fa-exclamation-triangle' : 'fa-check')}"></i>
+                                    ${task.state.toUpperCase()}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
+                                    ${startedStr}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">
+                                    ${finishedStr}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-size: 12px; color: var(--primary); font-weight: 600;">
+                                    ${durationStr}
+                                </div>
+                            </td>
+                            <td style="text-align:right;">
+                                ${task.state === 'running' || task.state === 'queued' ?
+                            `<button onclick="cancelJob('${task.id}')" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px;">
+                                        <i class="fas fa-stop"></i> Abort
+                                    </button>` :
+                            (task.state === 'failed' ?
+                                `<button onclick="alert('Error: ${(job.exc_info?.split('\n')[0] || 'Unknown error').replace(/'/g, "\\'")}');" class="btn btn-secondary" style="padding: 4px 12px; font-size: 11px; color:#ff5252; border-color: rgba(255, 82, 82, 0.2);">
+                                        <i class="fas fa-terminal"></i> Log
+                                    </button>` :
+                                `<i class="fas fa-check-circle" style="color: #10b981; font-size: 14px;"></i>`)
+                        }
+                            </td>
+                        </tr>
+                    `;
+                }
             }
 
             html += '</tbody></table>';
             container.innerHTML = html;
             renderTasksPagination();
         }
+        
+        function togglePipelineGroup(groupId, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const isExpanded = expandedGroups.has(groupId);
+            
+            if (isExpanded) {
+                expandedGroups.delete(groupId);
+            } else {
+                expandedGroups.add(groupId);
+            }
+            
+            // Re-render to update icon rotation and subtask visibility
+            renderTasks();
+        }
 
         function renderTasksPagination() {
             const container = document.getElementById('tasks-pagination');
-            const totalPages = Math.ceil(allTasksHistory.length / tasksPageSize);
+            
+            // Count display items (groups + standalone tasks)
+            const pipelineGroups = {};
+            let standaloneCount = 0;
+            
+            allTasksHistory.forEach(task => {
+                const match = task.id.match(/^pipeline-(scraper|loader|validator)-(\d+)$/);
+                if (match) {
+                    pipelineGroups[match[2]] = true;
+                } else {
+                    standaloneCount++;
+                }
+            });
+            
+            const totalDisplayItems = Object.keys(pipelineGroups).length + standaloneCount;
+            const totalPages = Math.ceil(totalDisplayItems / tasksPageSize);
 
             if (totalPages <= 1) {
                 container.innerHTML = '';
@@ -964,8 +1326,28 @@
 
             let btns = `<button class="page-btn" onclick="tasksCurrentPage--; renderTasks()" ${tasksCurrentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
 
-            for (let i = 1; i <= totalPages; i++) {
-                btns += `<button class="page-btn ${i === tasksCurrentPage ? 'active' : ''}" onclick="tasksCurrentPage=${i}; renderTasks()">${i}</button>`;
+            const maxButtons = 6;
+
+            if (totalPages <= 8) {
+                for (let i = 1; i <= totalPages; i++) {
+                    btns += `<button class="page-btn ${i === tasksCurrentPage ? 'active' : ''}" onclick="tasksCurrentPage=${i}; renderTasks()">${i}</button>`;
+                }
+            } else {
+                if (tasksCurrentPage < totalPages / 2) {
+                    const end = Math.max(maxButtons, tasksCurrentPage + 1);
+                    for (let i = 1; i <= end; i++) {
+                        btns += `<button class="page-btn ${i === tasksCurrentPage ? 'active' : ''}" onclick="tasksCurrentPage=${i}; renderTasks()">${i}</button>`;
+                    }
+                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
+                    btns += `<button class="page-btn" onclick="tasksCurrentPage=${totalPages}; renderTasks()">${totalPages}</button>`;
+                } else {
+                    btns += `<button class="page-btn" onclick="tasksCurrentPage=1; renderTasks()">1</button>`;
+                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
+                    const start = Math.min(totalPages - maxButtons + 1, tasksCurrentPage - 1);
+                    for (let i = start; i <= totalPages; i++) {
+                        btns += `<button class="page-btn ${i === tasksCurrentPage ? 'active' : ''}" onclick="tasksCurrentPage=${i}; renderTasks()">${i}</button>`;
+                    }
+                }
             }
 
             btns += `<button class="page-btn" onclick="tasksCurrentPage++; renderTasks()" ${tasksCurrentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
@@ -1164,16 +1546,103 @@
 
         async function loadAllJobs() {
             try {
-                // Fixed trailing slash to match FastAPI route exactly
-                const response = await fetch('/api/jobs/');
+                // Load all jobs to match word frequency analysis
+                const response = await fetch('/api/jobs/?limit=1000');
                 const data = await response.json();
                 allJobs = data.jobs;
                 filteredJobs = allJobs;
                 document.getElementById('browse-total').textContent = allJobs.length;
                 renderBrowse();
+                loadWordStatistics();
             } catch (e) {
                 document.getElementById('browseList').innerHTML = '<div class="alert-error">Erro ao carregar dados.</div>';
             }
+        }
+
+        async function loadWordStatistics() {
+            try {
+                const response = await fetch('/api/jobs/analysis/word-frequency?top_n=15');
+                const data = await response.json();
+                renderWordStatistics(data);
+            } catch (e) {
+                document.getElementById('word-stats-container').innerHTML = '<div style="text-align:center; padding:40px; color:#ff5252;">Error loading statistics</div>';
+            }
+        }
+
+        function renderWordStatistics(data) {
+            const container = document.getElementById('word-stats-container');
+            
+            const renderWordList = (title, words) => {
+                if (!words || words.length === 0) return '';
+                
+                let html = `
+                    <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+                        <h5 style="margin: 0 0 5px 0; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                            ${title}
+                        </h5>
+                        <p style="margin: 0 0 15px 0; font-size: 11px; color: var(--text-muted); font-style: italic;">
+                            Count = number of job titles containing this word/phrase
+                        </p>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                `;
+                
+                const maxCount = Math.max(...words.map(w => w.count));
+                
+                words.forEach((item, idx) => {
+                    const text = item.text;
+                    const count = item.count;
+                    const percentage = (count / maxCount) * 100;
+                    
+                    html += `
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 11px; color: var(--text-muted); min-width: 25px; text-align: right;">#${idx + 1}</span>
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <a href="#" onclick="filterByWord('${text}'); return false;" style="font-size: 12px; color: var(--primary); font-weight: 500; text-decoration: none; cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">${text}</a>
+                                    <span style="font-size: 11px; color: var(--primary); font-weight: 600;">${count}</span>
+                                </div>
+                                <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;">
+                                    <div style="width: ${percentage}%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+                
+                return html;
+            };
+            
+            container.innerHTML = 
+                renderWordList('Top Single Words', data.single_words) +
+                renderWordList('Top 2-Word Phrases', data.two_word_phrases) +
+                renderWordList('Top 3-Word Phrases', data.three_word_phrases);
+        }
+
+        function filterByWord(word) {
+            console.log('Filtering by word:', word);
+            console.log('Current allJobs count:', allJobs.length);
+            
+            // Switch to Job Feed tab (dashboard)
+            switchTab('dashboard');
+            
+            // Wait for tab to switch before setting search value
+            setTimeout(() => {
+                const searchBox = document.getElementById('browseSearch');
+                if (searchBox) {
+                    searchBox.value = word;
+                    console.log('Search box value set to:', word);
+                    // Apply the filter
+                    applyFilters();
+                    console.log('Filtered jobs count:', filteredJobs.length);
+                } else {
+                    console.error('Search box not found');
+                }
+            }, 100);
         }
 
         function applyFilters() {
@@ -1181,7 +1650,8 @@
             filteredJobs = allJobs.filter(j =>
                 j.title.toLowerCase().includes(term) ||
                 j.company.toLowerCase().includes(term) ||
-                (j.source && j.source.toLowerCase().includes(term))
+                (j.source && j.source.toLowerCase().includes(term)) ||
+                (j.description && j.description.toLowerCase().includes(term))
             );
             currentPage = 1;
             renderBrowse();
@@ -1275,39 +1745,35 @@
             // Previous
             btns += `<button class="page-btn" onclick="currentPage--; renderBrowse()" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
 
-            // Windowed Pagination Logic
-            const delta = 1;
-            const left = currentPage - delta;
-            const right = currentPage + delta;
-            const range = [];
-            const rangeWithDots = [];
+            // Fixed Window Pagination Logic (Single Ellipsis)
+            const maxButtons = 6; // Buttons in the main window
 
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= left && i <= right)) {
-                    range.push(i);
-                }
-            }
-
-            let l;
-            for (let i of range) {
-                if (l) {
-                    if (i - l === 2) {
-                        rangeWithDots.push(l + 1);
-                    } else if (i - l !== 1) {
-                        rangeWithDots.push('...');
-                    }
-                }
-                rangeWithDots.push(i);
-                l = i;
-            }
-
-            rangeWithDots.forEach(i => {
-                if (i === '...') {
-                    btns += `<span style="padding: 8px 12px; color: var(--text-muted); font-size: 13px; display: flex; align-items: center;">...</span>`;
-                } else {
+            if (totalPages <= 8) {
+                // Show all if few pages
+                for (let i = 1; i <= totalPages; i++) {
                     btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
                 }
-            });
+            } else {
+                // Decide which side to collapse (Single Ellipsis)
+                if (currentPage < totalPages / 2) {
+                    // Start window
+                    const end = Math.max(maxButtons, currentPage + 1);
+                    for (let i = 1; i <= end; i++) {
+                        btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
+                    }
+                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
+                    btns += `<button class="page-btn" onclick="currentPage=${totalPages}; renderBrowse()">${totalPages}</button>`;
+                } else {
+                    // End window
+                    btns += `<button class="page-btn" onclick="currentPage=1; renderBrowse()">1</button>`;
+                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
+                    const start = Math.min(totalPages - maxButtons + 1, currentPage - 1);
+                    for (let i = start; i <= totalPages; i++) {
+                        btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
+                    }
+                }
+            }
+
 
             // Next
             btns += `<button class="page-btn" onclick="currentPage++; renderBrowse()" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
@@ -1315,6 +1781,142 @@
             btns += `</div>`;
 
             document.getElementById('pagination').innerHTML = btns;
+        }
+
+        // --- HEALTH MONITORING ---
+        async function refreshHealthData() {
+            try {
+                const response = await fetch('/api/health/dashboard');
+                const data = await response.json();
+                console.log('Health data received:', data);
+                renderHealthDashboard(data);
+            } catch (e) {
+                console.error('Failed to fetch health data:', e);
+                alert('Error loading health data: ' + e.message);
+            }
+        }
+
+        function renderHealthDashboard(data) {
+            const system = data.system;
+            const scrapers = data.scrapers;
+            console.log('Rendering health dashboard - DB status:', system.database_status);
+
+            // Update system stats
+            const statusColor = system.status === 'healthy' ? '#10b981' : (system.status === 'degraded' ? '#f59e0b' : '#ef4444');
+            document.getElementById('health-system-status').innerHTML = `<span style="color: ${statusColor};">●</span>`;
+            document.getElementById('health-active-scrapers').textContent = system.active_scrapers;
+            document.getElementById('health-total-jobs').textContent = system.total_jobs.toLocaleString();
+
+            // Database status
+            const dbColor = system.database_status === 'connected' ? '#10b981' : '#ef4444';
+            const dbIndicator = document.getElementById('health-db-indicator');
+            const dbDetails = document.getElementById('health-db-details');
+            if (dbIndicator && dbDetails) {
+                dbIndicator.style.color = dbColor;
+                dbIndicator.textContent = '●';
+                dbDetails.innerHTML = `
+                    <div>Status: <strong style="color: ${dbColor};">${system.database_status}</strong></div>
+                    <div style="margin-top: 5px; color: var(--text-muted);">Total Jobs: ${system.total_jobs.toLocaleString()}</div>
+                `;
+            }
+
+            // Redis status
+            const redisColor = system.redis_status === 'connected' ? '#10b981' : '#ef4444';
+            const redisIndicator = document.getElementById('health-redis-indicator');
+            const redisDetails = document.getElementById('health-redis-details');
+            if (redisIndicator && redisDetails) {
+                redisIndicator.style.color = redisColor;
+                redisIndicator.textContent = '●';
+                redisDetails.innerHTML = `
+                    <div>Status: <strong style="color: ${redisColor};">${system.redis_status}</strong></div>
+                    <div style="margin-top: 5px; color: var(--text-muted);">Connection active</div>
+                `;
+            }
+
+            // Queue status
+            const queueColor = system.queue_status.failed > 5 ? '#f59e0b' : '#10b981';
+            const queueIndicator = document.getElementById('health-queue-indicator');
+            const queueDetails = document.getElementById('health-queue-details');
+            if (queueIndicator && queueDetails) {
+                queueIndicator.style.color = queueColor;
+                queueIndicator.textContent = '●';
+                queueDetails.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px;">
+                        <div style="color: var(--text-muted);">Queued: <strong style="color: var(--primary);">${system.queue_status.queued}</strong></div>
+                        <div style="color: var(--text-muted);">Running: <strong style="color: var(--primary);">${system.queue_status.running}</strong></div>
+                        <div style="color: var(--text-muted);">Finished: <strong style="color: #10b981;">${system.queue_status.finished}</strong></div>
+                        <div style="color: var(--text-muted);">Failed: <strong style="color: ${system.queue_status.failed > 0 ? '#ef4444' : 'var(--text-muted)'};">${system.queue_status.failed}</strong></div>
+                    </div>
+                `;
+            }
+
+            // Render scrapers table
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Scraper</th>
+                            <th>Domain</th>
+                            <th>Status</th>
+                            <th>Total Jobs</th>
+                            <th>Last 24h</th>
+                            <th>Success Rate</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            scrapers.forEach(scraper => {
+                const statusColor = scraper.is_active ? '#10b981' : '#6b7280';
+                const statusIcon = scraper.is_active ? 'fa-check-circle' : 'fa-pause-circle';
+
+                html += `
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-spider" style="color: var(--primary); font-size: 14px;"></i>
+                                <strong style="color: var(--text-main);">${scraper.scraper_name}</strong>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${scraper.domain}</span>
+                        </td>
+                        <td>
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <i class="fas ${statusIcon}" style="color: ${statusColor};"></i>
+                                <span style="font-size: 11px; color: ${statusColor}; text-transform: uppercase; font-weight: 600;">
+                                    ${scraper.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                            </span>
+                        </td>
+                        <td>
+                            <strong style="color: var(--primary);">${scraper.total_jobs_scraped.toLocaleString()}</strong>
+                        </td>
+                        <td>
+                            <span style="color: var(--text-main);">${scraper.last_run_jobs_count ? scraper.last_run_jobs_count.toLocaleString() : '---'}</span>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 80px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                    <div style="width: ${scraper.success_rate_24h || 0}%; height: 100%; background: ${(scraper.success_rate_24h || 0) > 80 ? '#10b981' : '#f59e0b'}; transition: width 0.3s;"></div>
+                                </div>
+                                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">${(scraper.success_rate_24h || 0).toFixed(0)}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-size: 11px; color: var(--text-muted); font-style: italic;">${scraper.note || '---'}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('scrapers-health-container').innerHTML = html;
         }
     </script>
 </body>

@@ -10,7 +10,6 @@ from src.core.logging import get_logger
 logger = get_logger(__name__)
 
 # Configuração
-ENABLE_PRE_VALIDATION = settings.enable_pre_validation
 PRE_VALIDATION_SAMPLE_SIZE = settings.pre_validation_sample_size
 
 # Diretórios
@@ -18,9 +17,10 @@ output_directory = str(settings.output_path)
 
 def get_current_json_directory():
     """Get current date's JSON directory."""
-    current_year = datetime.now().year
-    current_month = datetime.now().month
-    current_day = datetime.now().day
+    now_=datetime.now()
+    current_year = now_.year
+    current_month = now_.month
+    current_day = now_.day
     return f"{output_directory}/{current_year}/{current_month}/{current_day}"
 
 def get_db_connection():

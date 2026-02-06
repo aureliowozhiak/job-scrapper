@@ -40,33 +40,50 @@ QUERIES = [
 SPIDER_CONFIG = {
     "skipthedrive_jobs": {
         "nice_name": "SkipTheDrive",
-        "domain": "skipthedrive.com"
+        "domain": "skipthedrive.com",
+        "active": True
     },
     "weworkremotely_jobs": {
         "nice_name": "WeWorkRemotely",
-        "domain": "weworkremotely.com"
+        "domain": "weworkremotely.com",
+        "active": True,
+        "note": "Uses Playwright for browser automation"
+    },
+    "remoteok_jobs": {
+        "nice_name": "RemoteOK",
+        "domain": "remoteok.com",
+        "active": True,
+        "note": "Uses JSON API"
+    },
+    "remotive_jobs": {
+        "nice_name": "Remotive",
+        "domain": "remotive.com",
+        "active": True,
+        "note": "Uses JSON API"
     }
 }
 
 # Derived list of active spiders for the orchestration loop
-SPIDERS = list(SPIDER_CONFIG.keys())
+SPIDERS = [spider_id for spider_id, cfg in SPIDER_CONFIG.items() if cfg.get("active", True)]
 
 
 def normalize_scrapy_job(job: Dict[str, Any], source: str = "unknown") -> Dict[str, str]:
     """
     Normalize Scrapy job data to database schema format.
-    
-    Args:
-        job: Raw job dict from Scrapy spider
-        source: Name of the spider/source
-        
-    Returns:
-        Normalized job dict
     """
+    link = job.get("url", "").strip()
+    
+    # If source is unknown, try to infer it from the domain
+    if source == "unknown" and link:
+        for spider_id, cfg in SPIDER_CONFIG.items():
+            if cfg["domain"] in link.lower():
+                source = cfg["nice_name"]
+                break
+
     return {
         "title": job.get("job_title", "").strip(),
         "company": job.get("company", "").strip(),
-        "link": job.get("url", "").strip(),
+        "link": link,
         "source": source
     }
 
@@ -84,15 +101,26 @@ def run_scrapy_spider_subprocess(spider_name: str, output_file: str, **kwargs) -
         True if successful, False otherwise
     """
     try:
-        # Build command
-        cmd = ["scrapy", "crawl", spider_name]
+        import sys
+        import os
+        
+        # Determine correct Python executable (prefer venv if available)
+        python_exe = sys.executable
+        venv_python = Path(__file__).parent.parent.parent / ".venv" / "bin" / "python3"
+        if venv_python.exists():
+            python_exe = str(venv_python)
+            logger.debug(f"Using venv Python: {python_exe}")
+        
+        # Build command - use python -m scrapy instead of scrapy command
+        cmd = [python_exe, "-m", "scrapy", "crawl", spider_name]
         
         # Add dynamic arguments
-        for key, value in kwargs.items():
+        # Filter out non-spider arguments like 'active'
+        spider_args = {k: v for k, v in kwargs.items() if k not in ['active']}
+        
+        for key, value in spider_args.items():
             if value:
-                # Normalize query if it's the query key
-                if key == "query":
-                    value = value.replace(" ", "+")
+                # Pass the value as-is to the spider
                 cmd.extend(["-a", f"{key}={value}"])
         
         cmd.extend([
@@ -100,33 +128,45 @@ def run_scrapy_spider_subprocess(spider_name: str, output_file: str, **kwargs) -
             "--loglevel=ERROR"
         ])
         
-        logger.info(f"Running spider '{spider_name}' with args: {kwargs}")
+        logger.info(f"Running spider '{spider_name}' with args: {spider_args}")
+        logger.debug(f"Full command: {' '.join(cmd)}")
+        logger.debug(f"Output file: {output_file}")
+        
+        # Get absolute path to spiders directory
+        cwd = Path(__file__).parent.parent / "spiders"
+        logger.debug(f"Working directory: {cwd}")
         
         result = subprocess.run(
             cmd,
-            cwd="src/spiders",
+            cwd=str(cwd),
             capture_output=True,
             text=True,
-            timeout=180
+            timeout=180,
+            env=os.environ.copy()  # Pass current environment
         )
+        
+        logger.debug(f"Return code: {result.returncode}")
         
         if result.returncode == 0:
             # Check if output file was created and has content
             if Path(output_file).exists():
                 file_size = Path(output_file).stat().st_size
+                logger.debug(f"Output file size: {file_size} bytes")
                 if file_size > 10:  # More than just "[]"
                     logger.info(f"Spider '{spider_name}' completed successfully ({file_size} bytes)")
                     return True
                 else:
-                    logger.warning(f"Spider '{spider_name}' produced empty results")
+                    logger.warning(f"Spider '{spider_name}' produced empty results (file size: {file_size})")
                     return True  # Not a failure, just no results
             else:
-                logger.warning(f"Spider '{spider_name}' did not create output file")
+                logger.warning(f"Spider '{spider_name}' did not create output file at: {output_file}")
                 return False
         else:
             logger.error(f"Spider failed with return code {result.returncode}")
             if result.stderr:
                 logger.error(f"Error output: {result.stderr[:500]}")
+            if result.stdout:
+                logger.debug(f"Stdout: {result.stdout[:500]}")
             return False
             
     except subprocess.TimeoutExpired:
@@ -197,14 +237,6 @@ def load_jobs_to_database(jobs: List[Dict[str, str]]) -> Dict[str, int]:
                 session.rollback()
                 continue
         
-        # Final cleanup: Fix any remaining 'unknown' sources based on URL patterns
-        # This uses the dynamic SPIDER_CONFIG to match domains to display names
-        for spider_id, cfg in SPIDER_CONFIG.items():
-            session.query(Position).filter(
-                (Position.source == "unknown") | (Position.source == None),
-                Position.link.contains(cfg["domain"])
-            ).update({"source": cfg["nice_name"]}, synchronize_session=False)
-
         # Commit all changes
         session.commit()
         logger.info(f"Database load complete: {stats}")
@@ -215,8 +247,35 @@ def load_jobs_to_database(jobs: List[Dict[str, str]]) -> Dict[str, int]:
         raise
     finally:
         session.close()
-    
     return stats
+
+
+def fix_database_sources() -> int:
+    """
+    Correct any missing 'source' fields based on URL patterns.
+    Returns the number of records fixed.
+    """
+    session = SessionLocal()
+    total_fixed = 0
+    try:
+        for spider_id, cfg in SPIDER_CONFIG.items():
+            # Use ilike/contains to match domains case-insensitively just in case
+            fixed = session.query(Position).filter(
+                (Position.source.is_(None)) | (Position.source == "unknown") | (Position.source == ""),
+                Position.link.contains(cfg["domain"])
+            ).update({"source": cfg["nice_name"]}, synchronize_session=False)
+            total_fixed += fixed
+        
+        session.commit()
+        if total_fixed > 0:
+            logger.info(f"Source cleanup complete: Fixed {total_fixed} legacy records.")
+        return total_fixed
+    except Exception as e:
+        logger.error(f"Error during database source cleanup: {e}")
+        session.rollback()
+        return 0
+    finally:
+        session.close()
 
 
 def run_integrated_scraper(config: Optional[Dict[str, Any]] = None, **legacy_kwargs) -> Dict[str, Any]:
@@ -339,6 +398,10 @@ def run_integrated_scraper(config: Optional[Dict[str, Any]] = None, **legacy_kwa
         total_jobs_loaded += s_stats["jobs_loaded"]
         total_duplicates += s_stats["duplicates"]
         total_errors += s_stats["errors"]
+
+    # Final Step: Self-heal any 'unknown' or missing sources
+    # This ensures even skipped duplicates get corrected
+    fix_database_sources()
 
     return {
         "queries_processed": queries_processed,

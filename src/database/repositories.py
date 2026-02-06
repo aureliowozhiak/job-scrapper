@@ -109,10 +109,12 @@ class PositionRepository:
         """Get database statistics."""
         total_jobs = self.db.query(func.count(Position.id)).scalar()
         total_companies = self.db.query(func.count(func.distinct(Position.company))).scalar()
+        total_sources = self.db.query(func.count(func.distinct(Position.source))).scalar()
         
         return {
             "total_jobs": total_jobs or 0,
-            "total_companies": total_companies or 0
+            "total_companies": total_companies or 0,
+            "total_sources": total_sources or 0
         }
     
     def delete_by_link(self, link: str) -> bool:

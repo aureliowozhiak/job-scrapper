@@ -3,13 +3,33 @@ import scrapy
 
 
 class WeWorkRemotelySpider(scrapy.Spider):
-    """Spider for WeWorkRemotely job board."""
+    """Spider for WeWorkRemotely job board with Playwright support.
+    
+    Uses scrapy-playwright to bypass Cloudflare protection and render JavaScript.
+    """
     
     name = "weworkremotely_jobs"
     allowed_domains = ["weworkremotely.com"]
+    
+    custom_settings = {
+        'DOWNLOAD_DELAY': 3,
+        'CONCURRENT_REQUESTS_PER_DOMAIN': 1,
+        'RETRY_TIMES': 3,
+        'HTTPERROR_ALLOW_ALL': True,
+        'DOWNLOAD_HANDLERS': {
+            'https': 'scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler',
+            'http': 'scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler',
+        },
+        'PLAYWRIGHT_BROWSER_TYPE': 'chromium',
+        'PLAYWRIGHT_LAUNCH_OPTIONS': {
+            'headless': True,
+            'timeout': 30000,
+        },
+        'PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT': 30000,
+    }
 
     def start_requests(self):
-        """Generate initial requests with search query and filters."""
+        """Generate initial requests with search query and filters using Playwright."""
         search_term = getattr(self, "query", "data+engineer")
         region = getattr(self, "region", None)
         category = getattr(self, "category", None)
@@ -21,12 +41,38 @@ class WeWorkRemotelySpider(scrapy.Spider):
         if category:
             url += f"&category[]={category}"
             
-        yield scrapy.Request(url=url, callback=self.parse)
+        yield scrapy.Request(
+            url=url, 
+            callback=self.parse,
+            meta={
+                'playwright': True,
+                'playwright_include_page': True,
+                'playwright_page_goto_kwargs': {
+                    'wait_until': 'networkidle',
+                    'timeout': 30000,
+                }
+            },
+            errback=self.errback,
+            dont_filter=True
+        )
 
-    def parse(self, response):
-        """Parse job listings from search results."""
+    async def parse(self, response):
+        """Parse job listings from search results rendered by Playwright."""
+        # Close Playwright page after content is loaded
+        page = response.meta.get('playwright_page')
+        if page:
+            await page.close()
+        
+        if response.status != 200:
+            self.logger.error(f"Unexpected status code: {response.status}")
+            return
+        
         # Extract job listings
         job_listings = response.css('.new-listing-container')
+        
+        if not job_listings:
+            self.logger.warning("No job listings found. Page structure may have changed or Cloudflare is blocking.")
+            return
         
         for job in job_listings:
             try:
@@ -60,3 +106,10 @@ class WeWorkRemotelySpider(scrapy.Spider):
         
         # Note: WeWorkRemotely search doesn't have traditional pagination
         # All results appear on one page
+    
+    async def errback(self, failure):
+        """Handle request errors."""
+        page = failure.request.meta.get('playwright_page')
+        if page:
+            await page.close()
+        self.logger.error(f"Request failed: {failure}")

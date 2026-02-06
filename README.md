@@ -4,14 +4,18 @@ Modern job scraping application built with FastAPI, SQLAlchemy, and RQ (Redis Qu
 
 ## ✨ Features
 
-- **🔍 Multi-site Scraping**: Automated scraping from WeWorkRemotely and SkipTheDrive
+- **🔍 Multi-site Scraping**: Automated scraping from 4 job boards (SkipTheDrive, WeWorkRemotely, RemoteOK, Remotive)
+  - **NEW**: WeWorkRemotely using Playwright to bypass Cloudflare ✨
+  - **NEW**: RemoteOK and Remotive using JSON APIs for fast data collection 🚀
 - **💾 Smart Data Management**: SQLAlchemy ORM with upsert capabilities
 - **⚡ Background Jobs**: Redis-backed job queue with RQ
 - **🎯 Data Validation**: Automatic link validation and cleanup
 - **🔄 Sync Analysis**: Compare local data with database before loading
-- **📊 Interactive Dashboard**: Web UI for monitoring and control
+- **📊 Interactive Dashboard**: Modern web UI with Job Feed, Task Manager, and Health Monitor
+- **❤️ Health Monitoring**: Real-time system health dashboard with scraper metrics ✨ **NEW**
 - **🔧 REST API**: Full-featured API with auto-generated documentation
 - **🐳 Docker Ready**: Complete Docker Compose setup
+- **🎭 Browser Automation**: Playwright integration for JavaScript-heavy sites
 
 ## 🏗️ Architecture
 
@@ -79,11 +83,11 @@ Access at http://localhost:8000
 ## 📖 Documentation
 
 - **[Docker Guide](DOCKER_GUIDE.md)** - Complete Docker setup and usage
-- **[Migration Complete](MIGRATION_COMPLETE.md)** - Full architecture documentation
-- **[Migration Plan](MIGRATION_PLAN.md)** - Migration strategy and roadmap
-- **[Enhancements Complete](ENHANCEMENTS_COMPLETE.md)** - Recent enhancements summary
-- **[WebSocket Guide](WEBSOCKET_GUIDE.md)** - Real-time updates integration
-- **[Test Coverage Plan](TEST_COVERAGE_PLAN.md)** - Comprehensive testing strategy
+- **[Migration Summary](MIGRATION_SUMMARY.md)** - Flask to FastAPI migration details
+- **[Roadmap](ROADMAP.md)** - Project roadmap and future plans
+- **[Playwright Implementation](PLAYWRIGHT_IMPLEMENTATION.md)** - Browser automation setup
+- **[WeWorkRemotely Status](WEWORKREMOTELY_STATUS.md)** - WeWorkRemotely scraper investigation
+- **[Test Coverage](TEST_COVERAGE_ACHIEVEMENT.md)** - Comprehensive testing strategy
 - **[API Docs](http://localhost:8000/api/docs)** - Interactive API documentation (when running)
 
 ## 🎯 Usage
@@ -91,16 +95,36 @@ Access at http://localhost:8000
 ### Web Interface
 
 Visit http://localhost:8000 and use the dashboard to:
-- **Dashboard Tab**: View statistics and job overview
+- **Job Feed Tab**: View all job listings with search, filter, and sort capabilities
 - **Task Manager Tab**: 
   - Trigger pipeline operations (Full Pipeline, Scrape, Load, Validate, Sync Check)
   - Monitor real-time job queue status (queued, running, finished, failed)
   - View and manage active jobs
   - View failed jobs with error details
   - Clear failed jobs from queue
-- **Browse Jobs Tab**: Search and filter all job listings
+- **Health Monitor Tab** ✨ **NEW**:
+  - Real-time system health dashboard
+  - Monitor Database, Redis, and Queue status
+  - Track individual scraper performance and success rates
+  - View 24-hour activity metrics
+  - Instant health status indicators (healthy/degraded/unhealthy)
 
 ### API Endpoints
+
+#### Health Monitoring ✨ **NEW**
+```bash
+# Get comprehensive health dashboard
+GET /api/health/dashboard
+
+# Check database health
+GET /api/health/db
+
+# Check Redis health
+GET /api/health/redis
+
+# Basic health check
+GET /api/health/
+```
 
 #### Job Search & Listing
 ```bash
@@ -165,7 +189,28 @@ ENABLE_PRE_VALIDATION=true
 VALIDATION_SAMPLE_SIZE=100
 ```
 
+## 🕷️ Active Scrapers
+
+The application currently supports 4 job boards:
+
+| Scraper | Domain | Method | Status |
+|---------|--------|--------|--------|
+| **SkipTheDrive** | skipthedrive.com | HTML Scraping | ✅ Active |
+| **WeWorkRemotely** | weworkremotely.com | Playwright (Browser) | ✅ Active |
+| **RemoteOK** | remoteok.com | JSON API | ✅ Active |
+| **Remotive** | remotive.com | JSON API | ✅ Active |
+
+All scrapers are monitored in real-time via the Health Monitor dashboard.
+
 ## 📊 Monitoring
+
+### Health Monitor Dashboard ✨ **NEW**
+Access the comprehensive health dashboard at http://localhost:8000 (Health Monitor tab) to view:
+- **System Health**: Overall status (healthy/degraded/unhealthy)
+- **Component Status**: Database, Redis, and Queue health
+- **Scraper Metrics**: Per-scraper performance and success rates
+- **24h Activity**: Recent scraping activity and job counts
+- **Success Rates**: Visual progress bars showing scraper reliability
 
 ### RQ Dashboard
 When running with Docker, access the RQ Dashboard at http://localhost:9181 to monitor:
@@ -178,6 +223,16 @@ When running with Docker, access the RQ Dashboard at http://localhost:9181 to mo
 ### Queue Status API
 ```bash
 curl http://localhost:8000/api/admin/queue/status
+```
+
+### Health Check API
+```bash
+# Comprehensive health dashboard
+curl http://localhost:8000/api/health/dashboard
+
+# Individual component checks
+curl http://localhost:8000/api/health/db
+curl http://localhost:8000/api/health/redis
 ```
 
 ## 🧪 Testing

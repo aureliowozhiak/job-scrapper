@@ -4,6 +4,7 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
+from scrapy.http import HtmlResponse, TextResponse
 
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
@@ -79,11 +80,20 @@ class JobfinderBotDownloaderMiddleware:
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
-
-        # Must either;
-        # - return a Response object
-        # - return a Request object
-        # - or raise IgnoreRequest
+        
+        # Ensure HTML responses are always HtmlResponse objects
+        if not isinstance(response, (HtmlResponse, TextResponse)):
+            content_type = response.headers.get(b'Content-Type', b'').decode('utf-8', errors='ignore').lower()
+            if 'html' in content_type or 'text' in content_type:
+                # Convert to HtmlResponse
+                return HtmlResponse(
+                    url=response.url,
+                    status=response.status,
+                    headers=response.headers,
+                    body=response.body,
+                    request=request
+                )
+        
         return response
 
     def process_exception(self, request, exception, spider):

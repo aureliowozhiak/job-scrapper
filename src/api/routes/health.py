@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from src.database.connection import get_db
 from redis import Redis
 from src.core.config import settings
+from src.core.health_monitor import health_monitor
+from src.schemas.health import HealthDashboardResponse
 
 router = APIRouter()
 
@@ -39,3 +41,10 @@ async def redis_health():
         return {"status": "healthy", "redis": "connected"}
     except Exception as e:
         return {"status": "unhealthy", "redis": "disconnected", "error": str(e)}
+
+
+@router.get("/dashboard", response_model=HealthDashboardResponse)
+async def health_dashboard():
+    """Get comprehensive health monitoring dashboard data."""
+    return health_monitor.get_dashboard_data()
+
