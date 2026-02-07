@@ -79,10 +79,8 @@ async def root(request: Request):
     # Get RQ queue status
     try:
         queue_status = job_manager.get_all_job_statuses()
-        has_running = queue_status.get("started", 0) > 0
     except Exception:
         queue_status = {"started": 0, "queued": 0, "failed": 0, "finished": 0}
-        has_running = False
     
     # Build status flags
     has_running = queue_status.get("started", 0) > 0
