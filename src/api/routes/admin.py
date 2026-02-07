@@ -1,6 +1,6 @@
 """Admin and control routes for managing scraping jobs."""
 from fastapi import APIRouter, HTTPException
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 from src.jobs.manager import job_manager
 from src.schemas.status import JobStatusResponse, PipelineResponse, QueueStatusResponse
 
