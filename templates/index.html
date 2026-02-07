@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
+            color: #2c3e50;
+        }
+
+        .header {
+            background: #273c75;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .auth-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #4078c0;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a8fd4;
+        }
+
+        .btn-secondary {
+            background: #e84118;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #c23616;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid #dcdde1;
+            margin-bottom: 2rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #7f8c8d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #273c75;
+        }
+
+        .tab.active {
+            color: #273c75;
+            border-bottom-color: #273c75;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-form input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #dcdde1;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .results {
+            list-style: none;
+        }
+
+        .results li {
+            padding: 1rem;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .results li:last-child {
+            border-bottom: none;
+        }
+
+        .results a {
+            color: #4078c0;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .results a:hover {
+            color: #273c75;
+            text-decoration: underline;
+        }
+
+        .admin-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .admin-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #4078c0;
+        }
+
+        .admin-card h3 {
+            margin-bottom: 0.5rem;
+            color: #273c75;
+        }
+
+        .admin-card p {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-unhealthy {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Login Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 1.5rem;
+            color: #273c75;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #dcdde1;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .form-actions button {
+            flex: 1;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .admin-badge {
+            background: #27ae60;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ app_name }}</h1>
+        <div class="auth-controls">
+            {% if is_admin %}
+                <span class="admin-badge">Admin</span>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            {% else %}
+                <button class="btn btn-primary" onclick="showLoginModal()">Admin Login</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('jobs')">Job Feed</button>
+            {% if is_admin %}
+                <button class="tab" onclick="switchTab('tasks')">Task Manager</button>
+                <button class="tab" onclick="switchTab('health')">Health Monitor</button>
+            {% endif %}
+        </div>
+
+        <!-- Job Feed Tab -->
+        <div id="jobs-tab" class="tab-content active">
+            <h2>Search Jobs</h2>
+            <form class="search-form" onsubmit="searchJobs(event)">
+                <input type="text" id="search-input" placeholder="Enter job keyword (e.g., data engineer)" required>
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+            <div id="search-results">
+                <p style="color: #7f8c8d;">Enter a keyword to search for jobs.</p>
+            </div>
+        </div>
+
+        {% if is_admin %}
+        <!-- Task Manager Tab -->
+        <div id="tasks-tab" class="tab-content">
+            <h2>Task Manager</h2>
+            <div class="admin-controls">
+                <div class="admin-card">
+                    <h3>Scrape Jobs</h3>
+                    <p>Start a new scraping job</p>
+                    <button class="btn btn-primary" onclick="startScrape()">Start Scraping</button>
+                </div>
+                <div class="admin-card">
+                    <h3>Load Data</h3>
+                    <p>Load scraped data to database</p>
+                    <button class="btn btn-primary" onclick="loadData()">Load Data</button>
+                </div>
+                <div class="admin-card">
+                    <h3>Validate Data</h3>
+                    <p>Validate data integrity</p>
+                    <button class="btn btn-primary" onclick="validateData()">Validate</button>
+                </div>
+                <div class="admin-card">
+                    <h3>Run Pipeline</h3>
+                    <p>Execute full ETL pipeline</p>
+                    <button class="btn btn-primary" onclick="runPipeline()">Run Pipeline</button>
+                </div>
+            </div>
+            <div id="task-output">
+                <p style="color: #7f8c8d;">Task output will appear here.</p>
+            </div>
+        </div>
+
+        <!-- Health Monitor Tab -->
+        <div id="health-tab" class="tab-content">
+            <h2>Health Monitor</h2>
+            <div class="admin-controls">
+                <div class="admin-card">
+                    <h3>Application Status</h3>
+                    <p id="app-status">Loading...</p>
+                </div>
+                <div class="admin-card">
+                    <h3>Database Status</h3>
+                    <p id="db-status">Loading...</p>
+                </div>
+                <div class="admin-card">
+                    <h3>Redis Status</h3>
+                    <p id="redis-status">Loading...</p>
+                </div>
+                <div class="admin-card">
+                    <h3>Total Jobs</h3>
+                    <p id="total-jobs">Loading...</p>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="refreshHealthStatus()">Refresh Status</button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>Admin Login</h2>
+            <div id="login-error" class="error-message"></div>
+            <form onsubmit="login(event)">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="hideLoginModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load health data when health tab is opened
+            if (tabName === 'health') {
+                refreshHealthStatus();
+            }
+        }
+
+        // Login modal
+        function showLoginModal() {
+            document.getElementById('login-modal').classList.add('active');
+        }
+
+        function hideLoginModal() {
+            document.getElementById('login-modal').classList.remove('active');
+            document.getElementById('login-error').classList.remove('active');
+        }
+
+        // Authentication
+        async function login(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    const errorDiv = document.getElementById('login-error');
+                    errorDiv.textContent = error.detail || 'Login failed';
+                    errorDiv.classList.add('active');
+                }
+            } catch (error) {
+                const errorDiv = document.getElementById('login-error');
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.add('active');
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.reload();
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+
+        // Job search
+        async function searchJobs(event) {
+            event.preventDefault();
+            const keyword = document.getElementById('search-input').value;
+            const resultsDiv = document.getElementById('search-results');
+
+            resultsDiv.innerHTML = '<p style="color: #7f8c8d;">Searching...</p>';
+
+            try {
+                const response = await fetch(`/api/jobs/search?word=${encodeURIComponent(keyword)}`);
+                const data = await response.json();
+
+                if (data.results.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #7f8c8d;">No jobs found for this keyword.</p>';
+                } else {
+                    const resultsList = data.results.map(link => 
+                        `<li><a href="${link}" target="_blank">${link}</a></li>`
+                    ).join('');
+                    resultsDiv.innerHTML = `
+                        <h3>Found ${data.count} jobs</h3>
+                        <ul class="results">${resultsList}</ul>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<p style="color: #e84118;">Error searching jobs. Please try again.</p>';
+            }
+        }
+
+        // Admin tasks
+        async function startScrape() {
+            const query = prompt('Enter search query:');
+            if (!query) return;
+
+            try {
+                const response = await fetch('/api/admin/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #27ae60;">${data.message}</p>`;
+            } catch (error) {
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #e84118;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function loadData() {
+            const filePath = prompt('Enter file path:');
+            if (!filePath) return;
+
+            try {
+                const response = await fetch('/api/admin/load', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_path: filePath })
+                });
+
+                const data = await response.json();
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #27ae60;">${data.message}</p>`;
+            } catch (error) {
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #e84118;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function validateData() {
+            try {
+                const response = await fetch('/api/admin/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #27ae60;">${data.message}</p>`;
+            } catch (error) {
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #e84118;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function runPipeline() {
+            try {
+                const response = await fetch('/api/admin/pipeline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ queries: ['data engineer', 'data scientist'] })
+                });
+
+                const data = await response.json();
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #27ae60;">${data.message}</p>`;
+            } catch (error) {
+                document.getElementById('task-output').innerHTML = 
+                    `<p style="color: #e84118;">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Health monitoring
+        async function refreshHealthStatus() {
+            try {
+                // Get basic health
+                const healthResponse = await fetch('/api/health/');
+                const healthData = await healthResponse.json();
+                document.getElementById('app-status').innerHTML = 
+                    `<span class="status-indicator status-${healthData.status === 'healthy' ? 'healthy' : 'unhealthy'}">${healthData.status}</span>`;
+
+                // Get database health
+                const dbResponse = await fetch('/api/health/db');
+                const dbData = await dbResponse.json();
+                document.getElementById('db-status').innerHTML = 
+                    `<span class="status-indicator status-${dbData.status === 'healthy' ? 'healthy' : 'unhealthy'}">${dbData.status}</span><br><small>${dbData.message || ''}</small>`;
+
+                // Get Redis health
+                const redisResponse = await fetch('/api/health/redis');
+                const redisData = await redisResponse.json();
+                document.getElementById('redis-status').innerHTML = 
+                    `<span class="status-indicator status-unhealthy">${redisData.status}</span><br><small>${redisData.message || ''}</small>`;
+
+                // Get dashboard stats (admin only)
+                const dashboardResponse = await fetch('/api/health/dashboard');
+                if (dashboardResponse.ok) {
+                    const dashboardData = await dashboardResponse.json();
+                    document.getElementById('total-jobs').innerHTML = 
+                        `<strong style="font-size: 2rem; color: #273c75;">${dashboardData.total_jobs}</strong>`;
+                }
+            } catch (error) {
+                console.error('Error refreshing health status:', error);
+            }
+        }
+    </script>
+</body>
+</html>

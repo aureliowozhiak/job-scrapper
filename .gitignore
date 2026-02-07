@@ -76,3 +76,6 @@ lake/**/*.html
 output/**/*.json
 
 spider_output/
+
+# Environment variables
+.env
