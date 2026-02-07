@@ -1,7 +1,7 @@
 """Job search and listing routes."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict
+from typing import List, Optional
 from collections import Counter
 import re
 from src.database.connection import get_db
