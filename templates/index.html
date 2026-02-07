@@ -403,7 +403,14 @@
 
             // Show selected tab
             document.getElementById(`${tabName}-tab`).classList.add('active');
-            event.target.classList.add('active');
+            
+            // Mark the clicked tab as active
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                if (tab.textContent.toLowerCase().replace(' ', '-').includes(tabName)) {
+                    tab.classList.add('active');
+                }
+            });
 
             // Load health data when health tab is opened
             if (tabName === 'health') {
@@ -582,8 +589,9 @@
                 // Get Redis health
                 const redisResponse = await fetch('/api/health/redis');
                 const redisData = await redisResponse.json();
+                const redisStatusClass = redisData.status === 'healthy' ? 'healthy' : 'unhealthy';
                 document.getElementById('redis-status').innerHTML = 
-                    `<span class="status-indicator status-unhealthy">${redisData.status}</span><br><small>${redisData.message || ''}</small>`;
+                    `<span class="status-indicator status-${redisStatusClass}">${redisData.status}</span><br><small>${redisData.message || ''}</small>`;
 
                 // Get dashboard stats (admin only)
                 const dashboardResponse = await fetch('/api/health/dashboard');

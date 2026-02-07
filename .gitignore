@@ -79,3 +79,4 @@ spider_output/
 
 # Environment variables
 .env
+cookies.txt

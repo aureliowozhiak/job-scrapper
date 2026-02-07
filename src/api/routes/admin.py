@@ -123,17 +123,14 @@ async def delete_job(job_id: int):
     Protected endpoint - requires admin authentication.
     """
     try:
-        connection = sqlite3.connect("jobs.db")
-        cursor = connection.cursor()
-        
-        cursor.execute("DELETE FROM positions WHERE id = ?", (job_id,))
-        connection.commit()
-        
-        if cursor.rowcount == 0:
-            connection.close()
-            raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-        
-        connection.close()
+        with sqlite3.connect("jobs.db") as connection:
+            cursor = connection.cursor()
+            
+            cursor.execute("DELETE FROM positions WHERE id = ?", (job_id,))
+            connection.commit()
+            
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
         
         return MessageResponse(
             message=f"Job {job_id} deleted successfully",

@@ -18,9 +18,15 @@ app = FastAPI(
 )
 
 # Add session middleware for authentication
+if not settings.session_secret_key:
+    raise ValueError(
+        "SESSION_SECRET_KEY must be set. "
+        "Generate one using: python -c \"import secrets; print(secrets.token_hex(32))\""
+    )
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.session_secret_key or "dev-secret-key-change-in-production"
+    secret_key=settings.session_secret_key
 )
 
 # Setup templates

@@ -58,14 +58,12 @@ async def database_health():
     Public endpoint - no authentication required.
     """
     try:
-        connection = sqlite3.connect("jobs.db")
-        cursor = connection.cursor()
-        
-        # Check if we can query the database
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-        
-        connection.close()
+        with sqlite3.connect("jobs.db") as connection:
+            cursor = connection.cursor()
+            
+            # Check if we can query the database
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
         
         return DatabaseHealth(
             status="healthy",
@@ -108,13 +106,12 @@ async def health_dashboard():
     db_status = "unknown"
     
     try:
-        connection = sqlite3.connect("jobs.db")
-        cursor = connection.cursor()
+        with sqlite3.connect("jobs.db") as connection:
+            cursor = connection.cursor()
+            
+            cursor.execute("SELECT COUNT(*) FROM positions")
+            total_jobs = cursor.fetchone()[0]
         
-        cursor.execute("SELECT COUNT(*) FROM positions")
-        total_jobs = cursor.fetchone()[0]
-        
-        connection.close()
         db_status = "healthy"
     except Exception:
         db_status = "unhealthy"

@@ -31,17 +31,15 @@ def search_jobs(word: str, db_path: str = "jobs.db") -> List[str]:
         List of job links matching the search
     """
     try:
-        connection = sqlite3.connect(db_path)
-        cursor = connection.cursor()
-        
-        query = "SELECT link FROM positions WHERE UPPER(title) LIKE UPPER(?)"
-        cursor.execute(query, (f"%{word}%",))
-        
-        results = [row[0] for row in cursor.fetchall()]
-        
-        connection.close()
-        
-        return results
+        with sqlite3.connect(db_path) as connection:
+            cursor = connection.cursor()
+            
+            query = "SELECT link FROM positions WHERE UPPER(title) LIKE UPPER(?)"
+            cursor.execute(query, (f"%{word}%",))
+            
+            results = [row[0] for row in cursor.fetchall()]
+            
+            return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
