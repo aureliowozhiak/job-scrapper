@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Browse Jobs - Job Scrapper</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --primary: #38bdf8;
+            --accent: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            font-family: 'Inter', -apple-system, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .nav-link {
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s;
+            padding: 10px 20px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .filters {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .filter-input:focus {
+            border-color: var(--primary);
+        }
+
+        .filter-input::placeholder {
+            color: #666;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, #00d9ff, #0099ff);
+            color: #fff;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 217, 255, 0.3);
+        }
+
+        .btn-clear {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-clear:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            color: #aaa;
+            font-size: 14px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .job-count {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Table Style Consistent with index.html */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px 20px;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        th.sortable:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--primary);
+        }
+
+        th.active-sort {
+            color: var(--primary);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        th i.sort-icon {
+            margin-left: 8px;
+            font-size: 10px;
+            opacity: 0.3;
+        }
+
+        th.active-sort i.sort-icon {
+            opacity: 1;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(56, 189, 248, 0.05);
+            cursor: pointer;
+        }
+
+        .job-link-cell {
+            color: var(--primary);
+            font-weight: 500;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .company-pill {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .datatable {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .job-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 16px;
+            cursor: pointer;
+        }
+
+        .job-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .job-item {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .job-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
+        }
+
+        .job-item:last-child {
+            border-bottom: none;
+        }
+
+        .job-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #00d9ff;
+            margin: 0 0 8px 0;
+        }
+
+        .job-company {
+            color: #aaa;
+            margin: 0 0 12px 0;
+            font-size: 14px;
+        }
+
+        .job-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: #666;
+            flex-wrap: wrap;
+        }
+
+        .job-meta a {
+            color: #00d9ff;
+            text-decoration: none;
+        }
+
+        .job-meta a:hover {
+            text-decoration: underline;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 20px;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            padding: 10px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #00d9ff;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: var(--primary);
+            color: #0f172a;
+            border-color: var(--primary);
+        }
+
+        .page-info {
+            color: #aaa;
+            font-size: 14px;
+            padding: 0 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #888;
+            font-size: 16px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: #888;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Browse All Jobs</h1>
+            <a href="/" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <div class="filters" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <input type="text" id="searchInput" class="filter-input" placeholder="🔍 Search by title or company..."
+                style="flex: 1; min-width: 250px;">
+            <button onclick="applyFilters()" class="btn">Apply</button>
+            <button onclick="clearFilters()" class="btn btn-clear">Clear</button>
+
+            <div
+                style="margin-left:auto; display:flex; align-items:center; gap:10px; background: rgba(255, 255, 255, 0.05); padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border);">
+                <span style="font-size:12px; color:var(--text-muted);">Items per page:</span>
+                <select id="pageSizeSelect" onchange="updatePageSize()"
+                    style="background: transparent; color: #fff; border: none; font-size: 14px; outline: none; cursor: pointer;">
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <span>Total: <span class="job-count" id="total">0</span> jobs (<span class="job-count" id="showing">0</span>
+                matching)</span>
+        </div>
+
+        <div class="table-container">
+            <div id="jobList" class="loading">Loading jobs...</div>
+        </div>
+
+        <div id="pagination" class="pagination"></div>
+    </div>
+
+    <script>
+        let allJobs = [];
+        let filteredJobs = [];
+        let currentPage = 1;
+        let pageSize = 10;
+        let sortCol = 'created_at';
+        let sortDir = 'desc';
+
+        function updatePageSize() {
+            pageSize = parseInt(document.getElementById('pageSizeSelect').value);
+            currentPage = 1;
+            renderJobs();
+        }
+
+        function sortJobs(col) {
+            if (sortCol === col) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortCol = col;
+                sortDir = 'asc';
+            }
+
+            filteredJobs.sort((a, b) => {
+                let valA = a[col] || '';
+                let valB = b[col] || '';
+
+                if (col === 'created_at') {
+                    valA = new Date(valA);
+                    valB = new Date(valB);
+                } else {
+                    valA = valA.toString().toLowerCase();
+                    valB = valB.toString().toLowerCase();
+                }
+
+                if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            currentPage = 1;
+            renderJobs();
+        }
+
+        // Load all jobs on page load
+        // Load jobs (optionally with search)
+        async function loadJobs(query = '') {
+            try {
+                document.getElementById('jobList').innerHTML = '<div class="loading">Loading jobs...</div>';
+
+                let url = '/api/jobs/';
+                if (query) {
+                    url = `/api/jobs/search?q=${encodeURIComponent(query)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // search route returns a list directly, while jobs/ returns a dict with 'jobs' key
+                allJobs = query ? data : data.jobs;
+                filteredJobs = allJobs;
+
+                document.getElementById('total').textContent = allJobs.length;
+                renderJobs();
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('jobList').innerHTML = '<div class="empty">Error loading jobs</div>';
+            }
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.trim();
+            // Using server-side search route now
+            loadJobs(search);
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            loadJobs();
+        }
+
+        function renderJobs() {
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageJobs = filteredJobs.slice(start, end);
+
+            document.getElementById('showing').textContent = filteredJobs.length;
+
+            if (pageJobs.length === 0) {
+                document.getElementById('jobList').innerHTML = '<div class="empty">No jobs found</div>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            const getIcon = (col) => {
+                if (sortCol !== col) return '<i class="fas fa-sort sort-icon"></i>';
+                return sortDir === 'asc' ? '<i class="fas fa-sort-up sort-icon"></i>' : '<i class="fas fa-sort-down sort-icon"></i>';
+            };
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable ${sortCol === 'title' ? 'active-sort' : ''}" onclick="sortJobs('title')">Job Title ${getIcon('title')}</th>
+                            <th class="sortable ${sortCol === 'company' ? 'active-sort' : ''}" onclick="sortJobs('company')">Company ${getIcon('company')}</th>
+                            <th class="sortable ${sortCol === 'created_at' ? 'active-sort' : ''}" onclick="sortJobs('created_at')">Posted Date ${getIcon('created_at')}</th>
+                            <th style="text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            html += pageJobs.map(job => `
+                <tr onclick="window.open('${job.link}', '_blank')">
+                    <td>
+                        <div class="job-link-cell">
+                            <i class="fas fa-briefcase"></i>
+                            ${job.title}
+                        </div>
+                    </td>
+                    <td><span class="company-pill">${job.company}</span></td>
+                    <td><span class="date-cell">${formatDate(job.created_at)}</span></td>
+                    <td style="text-align:right;">
+                        <span style="color:var(--primary); font-size: 12px;"><i class="fas fa-external-link-alt"></i> OPEN</span>
+                    </td>
+                </tr>
+            `).join('');
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('jobList').innerHTML = html;
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredJobs.length / pageSize);
+
+            if (totalPages <= 1) {
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = `
+                <button class="page-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-angle-double-left"></i></button>
+                <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>
+            `;
+
+            for (let i = 1; i <= totalPages; i++) {
+                paginationHTML += `
+                    <button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">
+                        ${i}
+                    </button>
+                `;
+            }
+
+            paginationHTML += `
+                <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>
+                <button class="page-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-angle-double-right"></i></button>
+            `;
+
+            paginationHTML += `<span class="page-info">Page ${currentPage} of ${totalPages}</span>`;
+
+            document.getElementById('pagination').innerHTML = paginationHTML;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredJobs.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderJobs();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        // Allow Enter key on search input
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') applyFilters();
+            });
+            loadJobs();
+        });
+    </script>
+</body>
+
+</html>
