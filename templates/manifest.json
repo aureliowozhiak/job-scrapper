@@ -1,0 +1,51 @@
+{
+  "name": "Sherlock Jobs",
+  "short_name": "SherlockJobs",
+  "description": "Modern job scraping application for remote positions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a202c",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "shortcuts": [
+    {
+      "name": "Search Jobs",
+      "short_name": "Search",
+      "description": "Search for remote jobs",
+      "url": "/?tab=job-feed",
+      "icons": [
+        {
+          "src": "/static/icon-search-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Task Manager",
+      "short_name": "Tasks",
+      "description": "Manage scraping tasks",
+      "url": "/?tab=task-manager",
+      "icons": [
+        {
+          "src": "/static/icon-task-96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

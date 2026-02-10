@@ -3,7 +3,7 @@ import logging
 import sys
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def setup_logging(app_name: str = "job-scrapper", logs_path: Path = Path("data/logs")) -> None:
@@ -30,7 +30,7 @@ def setup_logging(app_name: str = "job-scrapper", logs_path: Path = Path("data/l
     root_logger.addHandler(console_handler)
     
     # File handler - all logs (rotating)
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     all_logs_file = logs_path / f"{app_name}-{today}.log"
     file_handler = RotatingFileHandler(
         all_logs_file,

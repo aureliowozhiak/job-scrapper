@@ -1,5 +1,5 @@
 """Scraping orchestrator - replaces legacy/app.py."""
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import json
 from src.etl.extract import Extract
@@ -58,9 +58,9 @@ def run_scraper() -> dict:
     logger.info("STARTING JOB SCRAPING ETL PROCESS")
     
     # Setup paths
-    year = datetime.now().year
-    month = datetime.now().month
-    day = datetime.now().day
+    year = datetime.now(timezone.utc).year
+    month = datetime.now(timezone.utc).month
+    day = datetime.now(timezone.utc).day
     
     logger.info(f"Date: {year}-{month:02d}-{day:02d}")
     logger.info("=" * 60)

@@ -2,7 +2,7 @@ services:
   # Redis - Job Queue Backend
   redis:
     image: redis:7-alpine
-    container_name: job-scrapper-redis
+    container_name: sherlock-jobs-redis
     ports:
       - "6379:6379"
     volumes:
@@ -13,14 +13,14 @@ services:
       timeout: 3s
       retries: 3
     networks:
-      - job-scrapper-network
+      - sherlock-jobs-network
 
   # FastAPI Application
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: job-scrapper-api
+    container_name: sherlock-jobs-api
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
@@ -33,7 +33,6 @@ services:
     volumes:
       - .:/app
       - ./data:/app/data
-      - ./logs:/app/logs
     depends_on:
       redis:
         condition: service_healthy
@@ -44,7 +43,7 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - job-scrapper-network
+      - sherlock-jobs-network
     restart: unless-stopped
 
   # RQ Worker - Background Job Processor
@@ -52,7 +51,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: job-scrapper-worker
+    container_name: sherlock-jobs-worker
     command: python worker.py
     environment:
       - REDIS_HOST=redis
@@ -60,7 +59,6 @@ services:
     volumes:
       - .:/app
       - ./data:/app/data
-      - ./logs:/app/logs
     healthcheck:
       test: [ "CMD-SHELL", "pgrep -f worker.py || exit 1" ]
       interval: 30s
@@ -70,13 +68,13 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - job-scrapper-network
+      - sherlock-jobs-network
     restart: unless-stopped
 
   # RQ Dashboard (Optional - for monitoring jobs)
   rq-dashboard:
     image: eoranged/rq-dashboard
-    container_name: job-scrapper-dashboard
+    container_name: sherlock-jobs-dashboard
     ports:
       - "9181:9181"
     environment:
@@ -89,11 +87,11 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - job-scrapper-network
+      - sherlock-jobs-network
     restart: unless-stopped
 
 networks:
-  job-scrapper-network:
+  sherlock-jobs-network:
     driver: bridge
 
 volumes:

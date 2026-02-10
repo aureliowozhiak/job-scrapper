@@ -1,14 +1,16 @@
 """Main FastAPI application."""
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 
 from src.core.config import settings
+from src.core.auth import verify_credentials
 from src.database.connection import init_db
-from src.api.routes import health, jobs, admin, websocket
+from src.api.routes import health, jobs, admin, websocket, seo
 
 
 @asynccontextmanager
@@ -47,11 +49,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Session middleware for authentication
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret_key,
+    session_cookie="sherlock_session",
+    max_age=86400,  # 24 hours
+    same_site="lax",
+    https_only=False
+)
+
 # Include routers
 app.include_router(health.router, prefix=f"{settings.api_prefix}/health", tags=["Health"])
 app.include_router(jobs.router, prefix=f"{settings.api_prefix}/jobs", tags=["Jobs"])
 app.include_router(admin.router, prefix=f"{settings.api_prefix}/admin", tags=["Admin"])
 app.include_router(websocket.router, tags=["WebSocket"])
+app.include_router(seo.router, tags=["SEO"])
 
 # Templates
 templates = Jinja2Templates(directory="templates")
@@ -87,6 +100,9 @@ async def root(request: Request):
     # Build status flags
     has_running = queue_status.get("started", 0) > 0
     
+    # Check admin status
+    is_admin = request.session.get("is_admin", False)
+    
     return templates.TemplateResponse(
         request=request,
         name="index.html",
@@ -100,7 +116,9 @@ async def root(request: Request):
             },
             "sync_status": {"checked": False, "data": None},
             "error": None,
-            "success_msg": None
+            "success_msg": None,
+            "is_admin": is_admin,
+            "username": request.session.get("username", "")
         }
     )
 
@@ -134,6 +152,24 @@ async def browse_jobs(request: Request):
         name="browse.html",
         context={}
     )
+
+
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    """Handle admin login."""
+    if verify_credentials(username, password, settings.admin_username, settings.admin_password_hash):
+        request.session["is_admin"] = True
+        request.session["username"] = username
+        return RedirectResponse(url="/?msg=Login+successful", status_code=303)
+    else:
+        return RedirectResponse(url="/?error=Invalid+credentials", status_code=303)
+
+
+@app.post("/logout")
+async def logout(request: Request):
+    """Handle admin logout."""
+    request.session.clear()
+    return RedirectResponse(url="/?msg=Logged+out", status_code=303)
 
 
 if __name__ == "__main__":

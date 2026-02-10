@@ -1,151 +1,151 @@
 # Changelog - Sherlock Jobs
 
-## 🚀 Version 3.0 - Complete Modernization (February 2026)
+## 🚀 Versão 3.0 - Modernização Completa (Fevereiro 2026)
 
-### 🎯 Major Architecture Overhaul
+### 🎯 Reestruturação Arquitetural Completa
 
-**Migration from Flask to FastAPI** - Complete rewrite with modern async architecture
-- ✅ FastAPI with async/await support
-- ✅ Pydantic schemas for validation
-- ✅ Auto-generated OpenAPI documentation
-- ✅ SQLAlchemy 2.0 with modern ORM patterns
-- ✅ RQ (Redis Queue) for background job processing
-- ✅ WebSocket support for real-time updates
+**Migração de Flask para FastAPI** - Reescrita completa com arquitetura async moderna
+- ✅ FastAPI com suporte async/await
+- ✅ Schemas Pydantic para validação
+- ✅ Documentação OpenAPI auto-gerada
+- ✅ SQLAlchemy 2.0 com padrões ORM modernos
+- ✅ RQ (Redis Queue) para processamento de jobs em background
+- ✅ Suporte WebSocket para atualizações em tempo real
 
-### 🆕 New Features
+### 🆕 Novas Funcionalidades
 
-#### 1. **Pipeline Task Groups** ✨
-- ✅ Unified pipeline architecture: Scrape → Validate → Load → Cleanup
-- ✅ Task grouping with collapsible UI
-- ✅ Comprehensive statistics tracking per stage
-- ✅ Automatic file cleanup after successful runs
-- ✅ Progress tracking (e.g., "3/4 steps, 75%")
+#### 1. **Grupos de Tarefas de Pipeline** ✨
+- ✅ Arquitetura unificada de pipeline: Scrape → Validate → Load → Cleanup
+- ✅ Agrupamento de tarefas com UI expansível
+- ✅ Rastreamento abrangente de estatísticas por etapa
+- ✅ Limpeza automática de arquivos após execução bem-sucedida
+- ✅ Rastreamento de progresso (ex: "3/4 etapas, 75%")
 
-#### 2. **Role-Based Access Control (RBAC)** 🔐
-- ✅ Session-based authentication
-- ✅ Protected admin endpoints (`/api/admin/*`)
-- ✅ bcrypt password hashing
-- ✅ Login/logout functionality
-- ✅ Secure session management with 24-hour expiry
-- 📄 See [docs/RBAC.md](docs/RBAC.md)
+#### 2. **Controle de Acesso Baseado em Funções (RBAC)** 🔐
+- ✅ Autenticação baseada em sessão
+- ✅ Endpoints admin protegidos (`/api/admin/*`)
+- ✅ Hash de senha com bcrypt
+- ✅ Funcionalidade de login/logout
+- ✅ Gerenciamento seguro de sessão com expiração de 24 horas
+- 📄 Ver [docs/RBAC.md](docs/RBAC.md)
 
-#### 3. **Health Monitoring Dashboard** ❤️
-- ✅ Real-time system health metrics
-- ✅ Per-scraper statistics (jobs scraped, success rate)
-- ✅ Database connection status
-- ✅ Redis queue health
-- ✅ Active scrapers count
-- ✅ Visual health indicators
+#### 3. **Dashboard de Monitoramento de Saúde** ❤️
+- ✅ Métricas de saúde do sistema em tempo real
+- ✅ Estatísticas por scraper (vagas coletadas, taxa de sucesso)
+- ✅ Status de conexão do banco de dados
+- ✅ Saúde da fila Redis
+- ✅ Contagem de scrapers ativos
+- ✅ Indicadores visuais de saúde
 
-#### 4. **Multi-Source Scraping** 🔍
-- ✅ **SkipTheDrive** - Traditional scraping (600 jobs/run)
-- ✅ **WeWorkRemotely** - Playwright browser automation (Cloudflare bypass)
-- ✅ **RemoteOK** - JSON API integration (787 jobs/run)
-- ✅ **Remotive** - JSON API integration (226 jobs/run)
-- ✅ Parallel spider execution
-- ✅ 20 search queries per spider
+#### 4. **Scraping Multi-Fonte** 🔍
+- ✅ **SkipTheDrive** - Scraping tradicional (600 vagas/execução)
+- ✅ **WeWorkRemotely** - Automação de navegador com Playwright (bypass Cloudflare)
+- ✅ **RemoteOK** - Integração API JSON (787 vagas/execução)
+- ✅ **Remotive** - Integração API JSON (226 vagas/execução)
+- ✅ Execução paralela de spiders
+- ✅ 20 consultas de busca por spider
 
-#### 5. **SEO & Web Standards** 🌐
-- ✅ `robots.txt` for crawler guidelines
-- ✅ Dynamic `sitemap.xml` generation
-- ✅ RSS feed (`/rss.xml`) for new jobs
-- ✅ PWA manifest for mobile app support
-- ✅ Keyboard shortcuts (Ctrl+K search, Ctrl+Shift+T/H navigation)
+#### 5. **SEO & Padrões Web** 🌐
+- ✅ `robots.txt` para diretrizes de crawlers
+- ✅ Geração dinâmica de `sitemap.xml`
+- ✅ Feed RSS (`/rss.xml`) para novas vagas
+- ✅ Manifest PWA para suporte a aplicativo móvel
+- ✅ Atalhos de teclado (Ctrl+K busca, Ctrl+Shift+T/H navegação)
 
-#### 6. **Modern Dashboard UI** 📊
-- ✅ Single Page Application (SPA) design
-- ✅ **Job Feed** - Browse and search jobs
-  - Word frequency analysis (n-grams: 1, 2, 3 word combinations)
-  - Click-to-filter by word statistics
-  - Real-time job count
-  - Source filtering
-- ✅ **Task Manager** - Monitor background jobs
-  - Collapsible task groups
-  - Live progress updates via WebSocket
-  - Task history with statistics
-  - Queue status (queued/running/finished/failed)
-- ✅ **Health Dashboard** - System monitoring
-  - Per-scraper metrics
-  - Database/Redis status
-  - Visual health indicators
+#### 6. **Dashboard UI Moderno** 📊
+- ✅ Design Single Page Application (SPA)
+- ✅ **Feed de Vagas** - Navegue e pesquise vagas
+  - Análise de frequência de palavras (n-gramas: combinações de 1, 2, 3 palavras)
+  - Clique para filtrar por estatísticas de palavras
+  - Contagem de vagas em tempo real
+  - Filtragem por fonte
+- ✅ **Gerenciador de Tarefas** - Monitore jobs em background
+  - Grupos de tarefas expansíveis
+  - Atualizações de progresso ao vivo via WebSocket
+  - Histórico de tarefas com estatísticas
+  - Status da fila (enfileiradas/em execução/finalizadas/falhadas)
+- ✅ **Dashboard de Saúde** - Monitoramento do sistema
+  - Métricas por scraper
+  - Status Database/Redis
+  - Indicadores visuais de saúde
 
-#### 7. **Data Management** 💾
-- ✅ Direct database loading (no intermediate JSON files)
-- ✅ Smart duplicate detection by URL
-- ✅ Atomic scrape-and-load operations
-- ✅ Database migration to `data/db/` directory
-- ✅ Unified data directory structure (`data/db/`, `data/output/`, `data/lake/`, `data/logs/`)
-- ✅ Applied status tracking per job
+#### 7. **Gerenciamento de Dados** 💾
+- ✅ Carregamento direto no banco de dados (sem arquivos JSON intermediários)
+- ✅ Detecção inteligente de duplicatas por URL
+- ✅ Operações atômicas de scrape-and-load
+- ✅ Migração do banco de dados para diretório `data/db/`
+- ✅ Estrutura unificada de diretórios (`data/db/`, `data/output/`, `data/lake/`, `data/logs/`)
+- ✅ Rastreamento de status "aplicado" por vaga
 
-### 🐛 Fixes & Improvements
+### 🐛 Correções & Melhorias
 
 #### Performance
-- ✅ Removed intermediate JSON I/O (scraper loads directly to DB)
-- ✅ Optimized duplicate checking with database indexes
-- ✅ Reduced WebSocket refresh rate (smoother UI)
-- ✅ Efficient task group statistics aggregation
+- ✅ Removido I/O JSON intermediário (scraper carrega diretamente no BD)
+- ✅ Verificação de duplicatas otimizada com índices de banco de dados
+- ✅ Taxa de atualização WebSocket reduzida (UI mais suave)
+- ✅ Agregação eficiente de estatísticas de grupos de tarefas
 
-#### Reliability
-- ✅ Fixed timezone handling (UTC everywhere, datetime.now(datetime.UTC))
-- ✅ Resolved TargetClosedError in WeWorkRemotely scraper
-- ✅ Added Playwright browser timeout handling
-- ✅ Improved error recovery in spiders
-- ✅ Task group execution isolation (groups complete before next starts)
+#### Confiabilidade
+- ✅ Corrigido tratamento de timezone (UTC em todos os lugares, datetime.now(datetime.UTC))
+- ✅ Resolvido TargetClosedError no scraper WeWorkRemotely
+- ✅ Adicionado tratamento de timeout do navegador Playwright
+- ✅ Melhorada recuperação de erros nos spiders
+- ✅ Isolamento de execução de grupos de tarefas (grupos completam antes do próximo iniciar)
 
-#### User Experience
-- ✅ Fixed collapsible task group UI (stays open during updates)
-- ✅ Improved task sorting (by pipeline group, not individual tasks)
-- ✅ Added copy-to-clipboard for task output
-- ✅ Better progress tracking (task-based, not file-based)
-- ✅ Professional icons (removed emoji buttons)
-- ✅ Logo integration (magnifying glass in header)
+#### Experiência do Usuário
+- ✅ Corrigida UI de grupos de tarefas expansíveis (permanece aberta durante atualizações)
+- ✅ Melhorada ordenação de tarefas (por grupo de pipeline, não tarefas individuais)
+- ✅ Adicionado copiar-para-área-de-transferência para saída de tarefas
+- ✅ Melhor rastreamento de progresso (baseado em tarefas, não em arquivos)
+- ✅ Ícones profissionais (removidos botões com emoji)
+- ✅ Integração do logo (lupa no cabeçalho)
 
-#### Testing
-- ✅ 98%+ test coverage (3,530 lines of production code, 4,137 lines including tests)
-- ✅ 262 tests passing
-- ✅ Unit tests for all core modules
-- ✅ Integration tests for API endpoints
-- ✅ WebSocket testing
-- ✅ Mock-based testing to avoid production data pollution
+#### Testes
+- ✅ 98%+ de cobertura de testes (3.530 linhas de código de produção, 4.137 linhas incluindo testes)
+- ✅ 262 testes passando
+- ✅ Testes unitários para todos os módulos principais
+- ✅ Testes de integração para endpoints da API
+- ✅ Testes de WebSocket
+- ✅ Testes baseados em mock para evitar poluição de dados de produção
 
-### 📦 Infrastructure
+### 📦 Infraestrutura
 
 #### Docker
-- ✅ Multi-service Docker Compose setup
-  - `sherlock-jobs-api` - FastAPI application
-  - `sherlock-jobs-worker` - RQ background worker
-  - `sherlock-jobs-redis` - Redis for queue + cache
-- ✅ Volume management for persistent data
-- ✅ Health checks for all services
-- ✅ Development and production configurations
+- ✅ Configuração Docker Compose multi-serviço
+  - `sherlock-jobs-api` - Aplicação FastAPI
+  - `sherlock-jobs-worker` - Worker RQ em background
+  - `sherlock-jobs-redis` - Redis para fila + cache
+- ✅ Gerenciamento de volumes para dados persistentes
+- ✅ Health checks para todos os serviços
+- ✅ Configurações de desenvolvimento e produção
 
-#### Project Structure
+#### Estrutura do Projeto
 ```
 sherlock-jobs/
 ├── src/
-│   ├── api/          # FastAPI routes (jobs, admin, health, websocket, seo)
-│   ├── core/         # Config, logging, health monitoring
-│   ├── database/     # SQLAlchemy models, repositories
+│   ├── api/          # Rotas FastAPI (jobs, admin, health, websocket, seo)
+│   ├── core/         # Config, logging, monitoramento de saúde
+│   ├── database/     # Modelos SQLAlchemy, repositórios
 │   ├── etl/          # Extract, Transform, Load, Validate, Scraper
-│   ├── jobs/         # RQ task definitions (scraper, validator, loader, sync)
-│   ├── schemas/      # Pydantic models (job, status, pipeline, health)
-│   └── spiders/      # Scrapy spiders (4 job boards)
-├── templates/        # Jinja2 HTML templates (index.html, browse.html)
-├── static/           # Favicons, PWA assets
-├── data/             # Data directory (gitignored)
-│   ├── db/          # SQLite database
-│   ├── output/      # Scraped JSON files
-│   ├── lake/        # Raw HTML
-│   └── logs/        # Application logs
-├── tests/            # Comprehensive test suite
-│   ├── unit/        # Unit tests (100+ tests)
-│   └── integration/ # API integration tests
-├── docs/             # Documentation
+│   ├── jobs/         # Definições de tarefas RQ (scraper, validator, loader, sync)
+│   ├── schemas/      # Modelos Pydantic (job, status, pipeline, health)
+│   └── spiders/      # Spiders Scrapy (4 sites de vagas)
+├── templates/        # Templates HTML Jinja2 (index.html, browse.html)
+├── static/           # Favicons, assets PWA
+├── data/             # Diretório de dados (gitignored)
+│   ├── db/          # Banco de dados SQLite
+│   ├── output/      # Arquivos JSON coletados
+│   ├── lake/        # HTML bruto
+│   └── logs/        # Logs da aplicação
+├── tests/            # Suíte de testes abrangente
+│   ├── unit/        # Testes unitários (100+ testes)
+│   └── integration/ # Testes de integração da API
+├── docs/             # Documentação
 │   ├── RBAC.md
 │   ├── PIPELINE_ARCHITECTURE.md
 │   ├── AUTHENTICATION.md
 │   └── ...
-└── scripts/          # Utility scripts (logo generation, password hashing)
+└── scripts/          # Scripts utilitários (geração de logo, hash de senha)
 ```
 
 ---
@@ -350,152 +350,152 @@ load.py (deduplicação + logging)
 
 ---
 
-## 🚀 Roadmap - Next Steps
+## 🚀 Roteiro - Próximos Passos
 
-### Completed ✅
-- [x] **RBAC Implementation** - Session-based authentication
-- [x] **Health Monitoring** - Real-time system dashboard
-- [x] **Pipeline Task Groups** - Unified task management
-- [x] **Multi-Source Scraping** - 4 job boards integrated
-- [x] **SEO Optimization** - robots.txt, sitemap, RSS feed
-- [x] **PWA Support** - Progressive Web App manifest
-- [x] **Word Frequency Analysis** - N-gram statistics with click-to-filter
-- [x] **Test Coverage** - 98%+ coverage with 262 tests
-- [x] **Direct Database Loading** - Eliminated intermediate JSON I/O
-- [x] **Logo & Branding** - Professional Sherlock Jobs branding
-- [x] **Keyboard Shortcuts** - Improved accessibility
+### Concluído ✅
+- [x] **Implementação RBAC** - Autenticação baseada em sessão
+- [x] **Monitoramento de Saúde** - Dashboard do sistema em tempo real
+- [x] **Grupos de Tarefas de Pipeline** - Gerenciamento unificado de tarefas
+- [x] **Scraping Multi-Fonte** - 4 sites de vagas integrados
+- [x] **Otimização SEO** - robots.txt, sitemap, feed RSS
+- [x] **Suporte PWA** - Manifest de Progressive Web App
+- [x] **Análise de Frequência de Palavras** - Estatísticas de n-gramas com clique para filtrar
+- [x] **Cobertura de Testes** - 98%+ de cobertura com 262 testes
+- [x] **Carregamento Direto no Banco** - Eliminado I/O JSON intermediário
+- [x] **Logo & Marca** - Branding profissional Sherlock Jobs
+- [x] **Atalhos de Teclado** - Acessibilidade melhorada
 
-### In Progress 🔄
-- [ ] **WeWorkRemotely Debugging** - Investigating TargetClosedError (Playwright timeout issues)
-- [ ] **User-Specific Scopes** - Per-user job tracking (postponed pending auth expansion)
+### Em Progresso 🔄
+- [ ] **Debugging WeWorkRemotely** - Investigando TargetClosedError (problemas de timeout Playwright)
+- [ ] **Escopos Específicos por Usuário** - Rastreamento de vagas por usuário (adiado pendente expansão de auth)
 
-### Future Enhancements 🔮
+### Melhorias Futuras 🔮
 
 #### Performance
-1. **Async Optimization**
-   - aiohttp for parallel HTTP requests
+1. **Otimização Async**
+   - aiohttp para requisições HTTP paralelas
    - Connection pooling
-   - Redis caching for frequently accessed data
-   - Background job result caching (1-hour TTL)
+   - Cache Redis para dados acessados frequentemente
+   - Cache de resultados de jobs em background (TTL de 1 hora)
 
-#### Features
-2. **Advanced Filtering**
-   - Salary range filter
-   - Location/timezone filter
-   - Company size filter
-   - Job type (contract/full-time/part-time)
+#### Funcionalidades
+2. **Filtragem Avançada**
+   - Filtro de faixa salarial
+   - Filtro de localização/fuso horário
+   - Filtro de tamanho da empresa
+   - Tipo de trabalho (contrato/tempo integral/meio período)
 
-3. **User Features**
-   - Email notifications for new jobs matching criteria
-   - Telegram bot integration
-   - Job application tracking
-   - Saved searches
-   - Personalized recommendations
+3. **Funcionalidades de Usuário**
+   - Notificações por email para novas vagas correspondentes aos critérios
+   - Integração com bot Telegram
+   - Rastreamento de candidaturas
+   - Buscas salvas
+   - Recomendações personalizadas
 
-4. **Data Sources**
-   - Add more job boards (FlexJobs, Remote.co, AngelList)
-   - Company career pages scraping
-   - LinkedIn integration (if feasible)
+4. **Fontes de Dados**
+   - Adicionar mais sites de vagas (FlexJobs, Remote.co, AngelList)
+   - Scraping de páginas de carreira de empresas
+   - Integração LinkedIn (se viável)
 
-#### Infrastructure
-5. **CI/CD Pipeline**
-   - GitHub Actions for automated testing
-   - Automated deployment to production
-   - Code quality badges
-   - Automated coverage reports
+#### Infraestrutura
+5. **Pipeline CI/CD**
+   - GitHub Actions para testes automatizados
+   - Deploy automatizado para produção
+   - Badges de qualidade de código
+   - Relatórios de cobertura automatizados
 
-6. **Monitoring & Observability**
-   - Sentry integration for error tracking
-   - Prometheus metrics
-   - Grafana dashboards
-   - Performance profiling
+6. **Monitoramento & Observabilidade**
+   - Integração Sentry para rastreamento de erros
+   - Métricas Prometheus
+   - Dashboards Grafana
+   - Profiling de performance
 
-7. **Code Quality**
-   - Type checking with mypy
-   - Linting with ruff
-   - Pre-commit hooks
-   - 100% test coverage target
+7. **Qualidade de Código**
+   - Type checking com mypy
+   - Linting com ruff
+   - Hooks pre-commit
+   - Meta de 100% de cobertura de testes
 
-8. **Database Evolution**
-   - PostgreSQL migration (from SQLite)
-   - Alembic migration system
-   - Database backups
-   - Read replicas for scaling
-
----
-
-## 📊 Project Statistics (v3.0)
-
-| Metric | Value |
-|--------|-------|
-| **Production Code** | 3,530 lines |
-| **Total Code (incl. tests)** | 4,137 lines |
-| **Test Count** | 262 tests |
-| **Test Coverage** | 98%+ |
-| **Job Boards** | 4 active sources |
-| **Average Jobs/Run** | 1,600+ jobs |
-| **API Endpoints** | 15+ endpoints |
-| **Background Tasks** | 5 task types |
-| **Documentation Files** | 10+ guides |
+8. **Evolução do Banco de Dados**
+   - Migração PostgreSQL (de SQLite)
+   - Sistema de migração Alembic
+   - Backups de banco de dados
+   - Read replicas para escalabilidade
 
 ---
 
-## 🏆 Key Achievements
+## 📊 Estatísticas do Projeto (v3.0)
 
-### Architecture
-✅ Complete migration from Flask to FastAPI  
-✅ Modern async/await patterns throughout  
-✅ Clean separation of concerns (API, Core, Database, ETL, Jobs)  
-✅ Comprehensive test coverage (98%+)  
-
-### Features
-✅ Real-time WebSocket updates  
-✅ Background job processing with RQ  
-✅ Multi-source scraping (4 job boards)  
-✅ Browser automation with Playwright  
-✅ Session-based authentication  
-✅ SEO-optimized with RSS/Sitemap  
-
-### Developer Experience
-✅ Auto-generated API documentation  
-✅ Comprehensive test suite  
-✅ Docker Compose for easy local development  
-✅ Detailed documentation (10+ guides)  
-✅ Type hints and Pydantic validation  
+| Métrica | Valor |
+|---------|-------|
+| **Código de Produção** | 3.530 linhas |
+| **Código Total (incl. testes)** | 4.137 linhas |
+| **Contagem de Testes** | 262 testes |
+| **Cobertura de Testes** | 98%+ |
+| **Sites de Vagas** | 4 fontes ativas |
+| **Média Vagas/Execução** | 1.600+ vagas |
+| **Endpoints da API** | 15+ endpoints |
+| **Tarefas em Background** | 5 tipos de tarefas |
+| **Arquivos de Documentação** | 10+ guias |
 
 ---
 
-## 📖 Documentation
+## 🏆 Conquistas Principais
 
-- **[README.md](README.md)** - Project overview and quick start
-- **[docs/RBAC.md](docs/RBAC.md)** - Authentication and authorization
-- **[docs/PIPELINE_ARCHITECTURE.md](docs/PIPELINE_ARCHITECTURE.md)** - Pipeline design
-- **[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)** - Security implementation
-- **[docs/LOGIN_UI.md](docs/LOGIN_UI.md)** - UI authentication flow
-- **[docs/PIPELINE_FIX_SUMMARY.md](docs/PIPELINE_FIX_SUMMARY.md)** - Recent fixes
-- **[docs/PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md)** - Performance tips
+### Arquitetura
+✅ Migração completa de Flask para FastAPI  
+✅ Padrões async/await modernos por todo o código  
+✅ Separação limpa de responsabilidades (API, Core, Database, ETL, Jobs)  
+✅ Cobertura de testes abrangente (98%+)  
 
----
+### Funcionalidades
+✅ Atualizações WebSocket em tempo real  
+✅ Processamento de jobs em background com RQ  
+✅ Scraping multi-fonte (4 sites de vagas)  
+✅ Automação de navegador com Playwright  
+✅ Autenticação baseada em sessão  
+✅ Otimizado para SEO com RSS/Sitemap  
 
-## 🤝 Contributing
-
-When contributing, please:
-1. Write tests for new features (maintain 95%+ coverage)
-2. Follow existing code style (Pydantic, type hints)
-3. Update documentation
-4. Add changelog entries
-5. Test with Docker Compose
-
----
-
-## 📝 Version History
-
-- **v3.0** (Feb 2026) - Complete FastAPI migration, RBAC, health monitoring, task groups
-- **v2.0** (Jan 2026) - Initial improvements (logging, testing, Docker)
-- **v1.0** - Original Flask implementation
+### Experiência do Desenvolvedor
+✅ Documentação da API auto-gerada  
+✅ Suíte de testes abrangente  
+✅ Docker Compose para desenvolvimento local fácil  
+✅ Documentação detalhada (10+ guias)  
+✅ Type hints e validação Pydantic  
 
 ---
 
-**Last Updated**: February 10, 2026  
-**Project Name**: Sherlock Jobs (formerly job-scrapper)  
-**Status**: ✅ Production Ready
+## 📖 Documentação
+
+- **[README.md](README.md)** - Visão geral do projeto e início rápido
+- **[docs/RBAC.md](docs/RBAC.md)** - Autenticação e autorização
+- **[docs/PIPELINE_ARCHITECTURE.md](docs/PIPELINE_ARCHITECTURE.md)** - Design do pipeline
+- **[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)** - Implementação de segurança
+- **[docs/LOGIN_UI.md](docs/LOGIN_UI.md)** - Fluxo de autenticação da UI
+- **[docs/PIPELINE_FIX_SUMMARY.md](docs/PIPELINE_FIX_SUMMARY.md)** - Correções recentes
+- **[docs/PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md)** - Dicas de performance
+
+---
+
+## 🤝 Contribuindo
+
+Ao contribuir, por favor:
+1. Escreva testes para novas funcionalidades (mantenha 95%+ de cobertura)
+2. Siga o estilo de código existente (Pydantic, type hints)
+3. Atualize a documentação
+4. Adicione entradas no changelog
+5. Teste com Docker Compose
+
+---
+
+## 📝 Histórico de Versões
+
+- **v3.0** (Fev 2026) - Migração completa FastAPI, RBAC, monitoramento de saúde, grupos de tarefas
+- **v2.0** (Jan 2026) - Melhorias iniciais (logging, testes, Docker)
+- **v1.0** - Implementação original em Flask
+
+---
+
+**Última Atualização**: 10 de Fevereiro de 2026  
+**Nome do Projeto**: Sherlock Jobs (anteriormente job-scrapper)  
+**Status**: ✅ Pronto para Produção

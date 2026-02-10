@@ -75,8 +75,12 @@ async def get_word_frequency(
     min_length: int = Query(3, ge=2, le=10, description="Minimum word length"),
     db: Session = Depends(get_db)
 ):
-    """Get word frequency analysis from job titles."""
-    positions = db.query(Position).all()
+    """Get word frequency analysis from job titles.
+    
+    Returns counts of JOBS (not occurrences) that match each n-gram when searched.
+    This aligns with the frontend filtering behavior using substring matching.
+    """
+    repo = PositionRepository(db)
     
     # Common words to exclude
     stop_words = {
@@ -85,40 +89,73 @@ async def get_word_frequency(
         'would', 'should', 'may', 'might', 'must', 'our', 'your', 'their'
     }
     
-    # Extract words from titles
-    single_words = []
-    two_word_phrases = []
-    three_word_phrases = []
+    # First, extract all unique n-grams from job titles
+    all_ngrams = set()
+    positions = db.query(Position).all()
     
     for pos in positions:
         title = pos.title.lower()
-        # Remove special characters but keep spaces and hyphens
-        words = re.findall(r'\b[a-z0-9-]+\b', title)
+        segments = re.split(r'[,;:()\[\]{}|/\-–—]+', title)
         
-        # Single words
-        for word in words:
-            if len(word) >= min_length and word not in stop_words:
-                single_words.append(word)
-        
-        # Two-word phrases
-        for i in range(len(words) - 1):
-            phrase = f"{words[i]} {words[i+1]}"
-            if len(words[i]) >= min_length and len(words[i+1]) >= min_length:
-                two_word_phrases.append(phrase)
-        
-        # Three-word phrases
-        for i in range(len(words) - 2):
-            phrase = f"{words[i]} {words[i+1]} {words[i+2]}"
-            if len(words[i]) >= min_length and len(words[i+1]) >= min_length:
-                three_word_phrases.append(phrase)
+        for segment in segments:
+            words = re.findall(r'\b[a-z0-9-]+\b', segment.strip())
+            
+            # Single words
+            for word in words:
+                if len(word) >= min_length and word not in stop_words:
+                    all_ngrams.add(word)
+            
+            # Two-word phrases (consecutive within same segment)
+            for i in range(len(words) - 1):
+                if (len(words[i]) >= min_length and words[i] not in stop_words and
+                    len(words[i+1]) >= min_length and words[i+1] not in stop_words):
+                    phrase = f"{words[i]} {words[i+1]}"
+                    all_ngrams.add(phrase)
+            
+            # Three-word phrases (consecutive within same segment)
+            for i in range(len(words) - 2):
+                if (len(words[i]) >= min_length and words[i] not in stop_words and
+                    len(words[i+1]) >= min_length and words[i+1] not in stop_words and
+                    len(words[i+2]) >= min_length and words[i+2] not in stop_words):
+                    phrase = f"{words[i]} {words[i+1]} {words[i+2]}"
+                    all_ngrams.add(phrase)
     
-    # Count frequencies
-    single_counter = Counter(single_words)
-    two_counter = Counter(two_word_phrases)
-    three_counter = Counter(three_word_phrases)
+    # Now count how many jobs match each n-gram using the same search logic as frontend
+    ngram_counts = {}
     
+    for ngram in all_ngrams:
+        # Use repository search to match frontend behavior exactly
+        count = repo.count(search=ngram)
+        if count > 0:
+            ngram_counts[ngram] = count
+    
+    # Separate by word count
+    single_words = {}
+    two_word_phrases = {}
+    three_word_phrases = {}
+    
+    for ngram, count in ngram_counts.items():
+        word_count = len(ngram.split())
+        
+        if word_count == 1:
+            single_words[ngram] = count
+        elif word_count == 2:
+            two_word_phrases[ngram] = count
+        elif word_count == 3:
+            three_word_phrases[ngram] = count
+    
+    # Sort by count and return top N
     return WordFrequencyResponse(
-        single_words=[WordFrequencyItem(text=word, count=count) for word, count in single_counter.most_common(top_n)],
-        two_word_phrases=[WordFrequencyItem(text=phrase, count=count) for phrase, count in two_counter.most_common(top_n)],
-        three_word_phrases=[WordFrequencyItem(text=phrase, count=count) for phrase, count in three_counter.most_common(top_n)]
+        single_words=[
+            WordFrequencyItem(text=word, count=count) 
+            for word, count in sorted(single_words.items(), key=lambda x: x[1], reverse=True)[:top_n]
+        ],
+        two_word_phrases=[
+            WordFrequencyItem(text=phrase, count=count) 
+            for phrase, count in sorted(two_word_phrases.items(), key=lambda x: x[1], reverse=True)[:top_n]
+        ],
+        three_word_phrases=[
+            WordFrequencyItem(text=phrase, count=count) 
+            for phrase, count in sorted(three_word_phrases.items(), key=lambda x: x[1], reverse=True)[:top_n]
+        ]
     )

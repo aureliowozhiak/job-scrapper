@@ -3,6 +3,10 @@ import sqlite3
 import requests
 import time
 import random
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+from typing import List, Dict, Any
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -44,7 +48,7 @@ def validate_link(url: str, timeout: int = 10) -> tuple[bool, int]:
         return False, 500  # Generic error
 
 
-def cleanup_invalid_jobs(db_path: str = "jobs.db", batch_size: int = 50) -> dict:
+def cleanup_invalid_jobs(db_path: str = "data/db/jobs.db", batch_size: int = 50) -> dict:
     """
     Valida links no banco de dados e remove vagas inválidas.
     
@@ -183,6 +187,139 @@ def validate_json_jobs(jobs_list: list, max_jobs: int = None) -> tuple[list, dic
     logger.info(f"Pre-validation complete: {stats['valid']} valid, {stats['rejected']} rejected")
     
     return valid_jobs, stats
+
+
+def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = True) -> Dict[str, Any]:
+    """
+    Validate scraped JSON files before loading to database.
+    
+    This is Step 2 of the pipeline: Scrape → Validate → Load
+    
+    Args:
+        output_dir: Directory containing scraped JSON files. If None, uses today's output directory.
+        skip_link_validation: If True, only validates structure (faster). If False, also validates links (slower).
+    
+    Returns:
+        Statistics about validation process
+    """
+    from src.core.config import settings
+    
+    logger.info("=" * 60)
+    logger.info(f"STARTING VALIDATION (skip_link_validation={skip_link_validation})")
+    logger.info("=" * 60)
+    
+    # Determine output directory
+    if not output_dir:
+        now = datetime.now(timezone.utc)
+        output_dir = Path(settings.output_path) / str(now.year) / str(now.month) / str(now.day)
+    else:
+        output_dir = Path(output_dir)
+    
+    if not output_dir.exists():
+        logger.warning(f"Output directory does not exist: {output_dir}")
+        return {
+            "files_found": 0,
+            "files_validated": 0,
+            "total_jobs": 0,
+            "valid_jobs": 0,
+            "invalid_jobs": 0,
+            "errors": []
+        }
+    
+    logger.info(f"Validating files in: {output_dir}")
+    
+    # Find all JSON files
+    json_files = list(output_dir.glob("*.json"))
+    logger.info(f"Found {len(json_files)} JSON files")
+    
+    if not json_files:
+        return {
+            "files_found": 0,
+            "files_validated": 0,
+            "total_jobs": 0,
+            "valid_jobs": 0,
+            "invalid_jobs": 0,
+            "errors": []
+        }
+    
+    total_jobs = 0
+    valid_jobs_count = 0
+    invalid_jobs_count = 0
+    files_validated = 0
+    errors = []
+    
+    for json_file in json_files:
+        try:
+            with open(json_file, 'r', encoding='utf-8') as f:
+                jobs = json.load(f)
+            
+            if not isinstance(jobs, list):
+                logger.warning(f"Skipping {json_file.name}: Not a list")
+                continue
+            
+            file_total = len(jobs)
+            total_jobs += file_total
+            
+            # Basic structure validation
+            file_valid = 0
+            file_invalid = 0
+            
+            for job in jobs:
+                # Required fields check
+                if not isinstance(job, dict):
+                    file_invalid += 1
+                    continue
+                
+                # Support both field naming conventions
+                title = job.get("title") or job.get("job_title", "")
+                title = title.strip() if title else ""
+                
+                company = job.get("company", "").strip()
+                
+                link = job.get("link") or job.get("url", "")
+                link = link.strip() if link else ""
+                
+                if not title or not company or not link or link == "N/A":
+                    file_invalid += 1
+                    continue
+                
+                # Optional link validation (slower)
+                if not skip_link_validation:
+                    is_valid, status_code = validate_link(link)
+                    if not is_valid:
+                        file_invalid += 1
+                        logger.debug(f"Invalid link in {json_file.name}: {link} (HTTP {status_code})")
+                        continue
+                
+                file_valid += 1
+            
+            valid_jobs_count += file_valid
+            invalid_jobs_count += file_invalid
+            files_validated += 1
+            
+            logger.info(f"✅ {json_file.name}: {file_valid}/{file_total} valid jobs")
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ {json_file.name}: Invalid JSON - {e}")
+            errors.append({"file": str(json_file), "error": str(e)})
+        except Exception as e:
+            logger.error(f"❌ {json_file.name}: {e}")
+            errors.append({"file": str(json_file), "error": str(e)})
+    
+    stats = {
+        "files_found": len(json_files),
+        "files_validated": files_validated,
+        "total_jobs": total_jobs,
+        "valid_jobs": valid_jobs_count,
+        "invalid_jobs": invalid_jobs_count,
+        "errors": errors
+    }
+    
+    logger.info("=" * 60)
+    logger.info(f"VALIDATION COMPLETE: {valid_jobs_count}/{total_jobs} valid jobs from {files_validated} files")
+    logger.info("=" * 60)
+    
+    return stats
 
 
 def main():

@@ -1,4 +1,4 @@
-# 🚀 Job Scrapper Pro v3.0
+# 🕵️ Sherlock Jobs v3.0
 
 Modern job scraping application built with FastAPI, SQLAlchemy, and RQ (Redis Queue) for reliable background job processing.
 
@@ -16,6 +16,9 @@ Modern job scraping application built with FastAPI, SQLAlchemy, and RQ (Redis Qu
 - **🔧 REST API**: Full-featured API with auto-generated documentation
 - **🐳 Docker Ready**: Complete Docker Compose setup
 - **🎭 Browser Automation**: Playwright integration for JavaScript-heavy sites
+- **🌐 SEO Optimized**: robots.txt, sitemap.xml, RSS feed ✨ **NEW**
+- **📱 PWA Support**: Progressive Web App with offline support ✨ **NEW**
+- **⌨️ Keyboard Shortcuts**: Ctrl+K for search, Ctrl+Shift+T/H for navigation ✨ **NEW**
 
 ## 🏗️ Architecture
 
@@ -140,10 +143,10 @@ GET /api/jobs/stats
 
 #### Admin/Control
 ```bash
-# Trigger scraping
+# Trigger scraping (includes automatic loading to database)
 POST /api/admin/scrape
 
-# Trigger full pipeline (scrape -> load -> validate)
+# Trigger full pipeline (scrape -> validate)
 POST /api/admin/pipeline
 
 # Check job status
@@ -164,6 +167,34 @@ GET /api/health/db
 # Redis health
 GET /api/health/redis
 ```
+
+#### SEO & Web Standards ✨ **NEW**
+```bash
+# RSS feed for recent jobs
+GET /rss.xml
+
+# Sitemap for search engines
+GET /sitemap.xml
+
+# Robots.txt
+GET /robots.txt
+
+# PWA manifest
+GET /manifest.json
+```
+
+### Keyboard Shortcuts ✨ **NEW**
+
+The web interface supports convenient keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+K` (or `Cmd+K`) | Focus search box |
+| `Ctrl+Shift+T` | Switch to Task Manager |
+| `Ctrl+Shift+H` | Switch to Health Monitor |
+| `Escape` | Clear search |
+
+These shortcuts make navigation faster and improve the user experience.
 
 ## 🔧 Configuration
 

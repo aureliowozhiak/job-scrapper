@@ -1,5 +1,6 @@
 """Load module for inserting scraped job data into SQLite database."""
 from datetime import datetime, timezone
+from typing import Optional
 import sqlite3
 import json
 import os
@@ -17,7 +18,7 @@ output_directory = str(settings.output_path)
 
 def get_current_json_directory():
     """Get current date's JSON directory."""
-    now_=datetime.now()
+    now_=datetime.now(timezone.utc)
     current_year = now_.year
     current_month = now_.month
     current_day = now_.day
@@ -127,9 +128,17 @@ def get_sync_status():
         "json_directory": json_dir
     }
 
-def run_load_process():
-    """Execute the load process."""
-    json_directory = get_current_json_directory()
+def run_load_process(output_dir: Optional[str] = None):
+    """Execute the load process.
+    
+    Args:
+        output_dir: Specific directory to load files from (if None, uses today's date directory)
+    """
+    if output_dir:
+        json_directory = output_dir
+    else:
+        json_directory = get_current_json_directory()
+    
     logger.info(f"Starting load process for {json_directory}")
     
     if not os.path.exists(json_directory):
@@ -191,29 +200,58 @@ def run_load_process():
             except Exception as e:
                 logger.warning(f"Pre-validation failed: {e}")
         
+        # Get existing links for duplicate checking
+        cursor.execute("SELECT link FROM positions")
+        existing_links = {row[0] for row in cursor.fetchall()}
+        db_count_before = len(existing_links)
+        logger.info(f"Found {db_count_before} existing jobs in database")
+        
+        # Deduplicate within batch first
+        unique_jobs = {}
+        batch_duplicates = 0
+        for position in jobs_to_process:
+            if isinstance(position, list):
+                continue
+            link = position.get("link") or position.get("url", "")
+            link = str(link).strip() if link else ""
+            if not link or link == "N/A":
+                continue
+            if link not in unique_jobs:
+                unique_jobs[link] = position
+            else:
+                batch_duplicates += 1
+        
+        logger.info(f"Batch deduplication: {len(jobs_to_process)} → {len(unique_jobs)} unique ({batch_duplicates} batch duplicates)")
+        
         # Insert
         stats = {
-            "processed": 0,
+            "processed": len(unique_jobs),
             "inserted": 0,
             "duplicates": 0,
+            "batch_duplicates": batch_duplicates,
+            "db_duplicates": 0,
             "errors": 0,
-            "pre_rejected": pre_validation_rejected
+            "pre_rejected": pre_validation_rejected,
+            "db_before": db_count_before
         }
         
-        for position in jobs_to_process:
-            stats["processed"] += 1
+        for link, position in unique_jobs.items():
             try:
-                # Handle nested lists if any remained
-                if isinstance(position, list):
-                     continue 
-                     
-                title = position.get("title", "").strip()
-                link = str(position.get("link", "")).strip()
+                # Normalize field names (scrapy uses job_title/url, loader expects title/link)
+                title = position.get("title") or position.get("job_title", "")
+                title = title.strip() if title else ""
+                
                 company = position.get("company", "").strip()
                 source = position.get("source", "unknown").strip()
                 
-                if not title or not link or not company or link == "N/A":
+                if not title or not company:
                     stats["errors"] += 1
+                    continue
+                
+                # Check if already in database
+                if link in existing_links:
+                    stats["db_duplicates"] += 1
+                    stats["duplicates"] += 1
                     continue
                     
                 now = datetime.now(timezone.utc)
@@ -224,7 +262,9 @@ def run_load_process():
                         (title, link, company, source, now, now)
                     )
                     stats["inserted"] += 1
+                    existing_links.add(link)  # Track newly inserted
                 except sqlite3.IntegrityError:
+                    # Shouldn't happen since we check first, but just in case
                     stats["duplicates"] += 1
                     
             except Exception as e:
@@ -233,8 +273,28 @@ def run_load_process():
                 
         connection.commit()
         
+        # Add final database count for clarity
+        cursor.execute("SELECT COUNT(*) FROM positions")
+        stats["db_after"] = cursor.fetchone()[0]
+        stats["db_new_jobs"] = stats["db_after"] - db_count_before
+        
         logger.info(f"Load complete. Stats: {stats}")
-        return stats
+        logger.info(f"Database: {db_count_before} → {stats['db_after']} (+{stats['db_new_jobs']} new)")
+        
+        # Return enhanced stats with better context
+        return {
+            "processed": len(jobs_to_process),
+            "unique_in_batch": len(unique_jobs),
+            "batch_duplicates": stats["batch_duplicates"],
+            "inserted": stats["inserted"],
+            "db_duplicates": stats["db_duplicates"],
+            "errors": stats["errors"],
+            "pre_rejected": stats["pre_rejected"],
+            "db_before": stats["db_before"],
+            "db_after": stats["db_after"],
+            "db_new_jobs": stats["db_new_jobs"],
+            "summary": f"{stats['inserted']} new, {stats['db_duplicates']} already in DB, {stats['batch_duplicates']} batch duplicates"
+        }
         
     finally:
         connection.close()
