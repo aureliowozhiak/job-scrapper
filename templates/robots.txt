@@ -1,0 +1,14 @@
+# robots.txt for Job Scrapper Pro
+User-agent: *
+Allow: /
+Allow: /api/jobs/
+Allow: /browse
+Disallow: /api/admin/
+Disallow: /api/health/
+Disallow: /ws
+
+# Sitemap
+Sitemap: {{base_url}}/sitemap.xml
+
+# Crawl-delay for politeness
+Crawl-delay: 1

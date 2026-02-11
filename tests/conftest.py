@@ -92,3 +92,18 @@ def multiple_positions():
             "company": "Company C"
         }
     ]
+
+
+@pytest.fixture
+def authenticated_client():
+    """Return a test client with admin authentication mocked."""
+    from src.core.permissions import require_admin
+    
+    async def mock_require_admin():
+        return True
+    
+    app.dependency_overrides[require_admin] = mock_require_admin
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+

@@ -46,8 +46,8 @@ class Settings(BaseSettings):
         return self
 
     enable_background_jobs: bool = True
-    job_timeout: int = 3600  # 1 hour
-    job_result_ttl: int = 3600  # 1 hour
+    job_timeout: int = 3600  # 1 hour (increased for scraping 4 sources × 20 queries)
+    job_result_ttl: int = 7200  # 2 hours
     
     # Scraper
     max_retries: int = 3
@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     enable_pre_validation: bool = True
     pre_validation_sample_size: int = 100
     validation_batch_size: int = 50
+    
+    # Authentication & Admin
+    admin_enabled: bool = True
+    admin_username: str = "admin"
+    admin_password_hash: str = "$2b$12$bmV2GuM1uPLENXrQJRRqE.U8pRHDEZkHNOQGVX1t9qUv6pLXiiir6"  # admin123
+    session_secret_key: str = "change-this-in-production-to-a-secure-random-key"
     
     model_config = SettingsConfigDict(
         env_file=".env",

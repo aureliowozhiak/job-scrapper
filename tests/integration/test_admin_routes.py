@@ -3,16 +3,27 @@ import pytest
 from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 from src.api.main import app
+from src.core.permissions import require_admin
 
-client = TestClient(app)
+
+@pytest.fixture
+def authenticated_client():
+    """Return a test client with admin authentication mocked."""
+    async def mock_require_admin():
+        return True
+    
+    app.dependency_overrides[require_admin] = mock_require_admin
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_trigger_scrape(mock_manager):
+def test_trigger_scrape(mock_manager, authenticated_client):
     """Test triggering scrape job."""
     mock_manager.enqueue_scraper.return_value = "scraper-123"
     
-    response = client.post("/api/admin/scrape")
+    response = authenticated_client.post("/api/admin/scrape")
     
     assert response.status_code == 200
     data = response.json()
@@ -22,11 +33,11 @@ def test_trigger_scrape(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_trigger_load(mock_manager):
+def test_trigger_load(mock_manager, authenticated_client):
     """Test triggering load job."""
     mock_manager.enqueue_loader.return_value = "loader-123"
     
-    response = client.post("/api/admin/load")
+    response = authenticated_client.post("/api/admin/load")
     
     assert response.status_code == 200
     data = response.json()
@@ -34,11 +45,11 @@ def test_trigger_load(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_trigger_validate(mock_manager):
+def test_trigger_validate(mock_manager, authenticated_client):
     """Test triggering validate job."""
     mock_manager.enqueue_validator.return_value = "validator-123"
     
-    response = client.post("/api/admin/validate")
+    response = authenticated_client.post("/api/admin/validate")
     
     assert response.status_code == 200
     data = response.json()
@@ -46,11 +57,11 @@ def test_trigger_validate(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_trigger_sync_check(mock_manager):
+def test_trigger_sync_check(mock_manager, authenticated_client):
     """Test triggering sync check job."""
     mock_manager.enqueue_sync_check.return_value = "sync-123"
     
-    response = client.post("/api/admin/sync-check")
+    response = authenticated_client.post("/api/admin/sync-check")
     
     assert response.status_code == 200
     data = response.json()
@@ -58,20 +69,20 @@ def test_trigger_sync_check(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_trigger_pipeline(mock_manager):
+def test_trigger_pipeline(mock_manager, authenticated_client):
     """Test triggering full pipeline."""
-    mock_manager.enqueue_pipeline.return_value = ["scraper-123", "loader-123", "validator-123"]
+    mock_manager.enqueue_pipeline.return_value = ["scraper-123", "validator-123", "loader-123", "cleanup-123"]
     
-    response = client.post("/api/admin/pipeline")
+    response = authenticated_client.post("/api/admin/pipeline")
     
     assert response.status_code == 200
     data = response.json()
-    assert len(data["job_ids"]) == 3
-    assert data["steps"] == ["scraper", "loader", "validator"]
+    assert len(data["job_ids"]) == 4
+    assert data["steps"] == ["scraper", "validator", "loader", "cleanup"]
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_get_job_status(mock_manager):
+def test_get_job_status(mock_manager, authenticated_client):
     """Test getting job status."""
     mock_manager.get_job_status.return_value = {
         "id": "test-123",
@@ -79,7 +90,7 @@ def test_get_job_status(mock_manager):
         "result": {"message": "Done"}
     }
     
-    response = client.get("/api/admin/job/test-123")
+    response = authenticated_client.get("/api/admin/job/test-123")
     
     assert response.status_code == 200
     data = response.json()
@@ -88,7 +99,7 @@ def test_get_job_status(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_get_queue_status(mock_manager):
+def test_get_queue_status(mock_manager, authenticated_client):
     """Test getting queue status."""
     mock_manager.get_all_job_statuses.return_value = {
         "queued": 2,
@@ -100,7 +111,7 @@ def test_get_queue_status(mock_manager):
         "failed_jobs": []
     }
     
-    response = client.get("/api/admin/queue/status")
+    response = authenticated_client.get("/api/admin/queue/status")
     
     assert response.status_code == 200
     data = response.json()
@@ -109,11 +120,11 @@ def test_get_queue_status(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_cancel_job(mock_manager):
+def test_cancel_job(mock_manager, authenticated_client):
     """Test cancelling a job."""
     mock_manager.cancel_job.return_value = True
     
-    response = client.delete("/api/admin/job/test-123")
+    response = authenticated_client.delete("/api/admin/job/test-123")
     
     assert response.status_code == 200
     data = response.json()
@@ -121,21 +132,21 @@ def test_cancel_job(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_cancel_job_not_found(mock_manager):
+def test_cancel_job_not_found(mock_manager, authenticated_client):
     """Test cancelling non-existent job."""
     mock_manager.cancel_job.return_value = False
     
-    response = client.delete("/api/admin/job/nonexistent")
+    response = authenticated_client.delete("/api/admin/job/nonexistent")
     
     assert response.status_code == 404
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_clear_failed_jobs(mock_manager):
+def test_clear_failed_jobs(mock_manager, authenticated_client):
     """Test clearing failed jobs."""
     mock_manager.clear_failed_jobs.return_value = None
     
-    response = client.delete("/api/admin/queue/failed")
+    response = authenticated_client.delete("/api/admin/queue/failed")
     
     assert response.status_code == 200
     data = response.json()
@@ -143,11 +154,11 @@ def test_clear_failed_jobs(mock_manager):
 
 
 @patch('src.api.routes.admin.job_manager')
-def test_enqueue_error_handling(mock_manager):
+def test_enqueue_error_handling(mock_manager, authenticated_client):
     """Test error handling when enqueue fails."""
     mock_manager.enqueue_scraper.side_effect = Exception("Redis connection failed")
     
-    response = client.post("/api/admin/scrape")
+    response = authenticated_client.post("/api/admin/scrape")
     
     assert response.status_code == 500
     data = response.json()

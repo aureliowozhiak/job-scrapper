@@ -2,9 +2,10 @@
 <html>
 
 <head>
-    <title>Browse Jobs - Job Scrapper</title>
+    <title>Browse Jobs - Sherlock Jobs</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
             box-sizing: border-box;
@@ -51,6 +52,15 @@
             color: var(--primary);
             margin: 0;
             font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 img.logo {
+            height: 36px;
+            width: auto;
+            filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.3));
         }
 
         .nav-link {
@@ -366,7 +376,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📋 Browse All Jobs</h1>
+            <h1>
+                <img src="/static/logo-white.png" alt="Sherlock Jobs Logo" class="logo">
+                Browse All Jobs
+            </h1>
             <a href="/" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
 

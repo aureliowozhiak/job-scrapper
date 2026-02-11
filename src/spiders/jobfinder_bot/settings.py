@@ -23,8 +23,19 @@ ROBOTSTXT_OBEY = False
 
 # Concurrency and throttling settings
 #CONCURRENT_REQUESTS = 16
-CONCURRENT_REQUESTS_PER_DOMAIN = 1
-DOWNLOAD_DELAY = 2
+CONCURRENT_REQUESTS_PER_DOMAIN = 2
+DOWNLOAD_DELAY = 1
+
+# Download timeouts (prevent hanging)
+DOWNLOAD_TIMEOUT = 30
+DNS_TIMEOUT = 30
+
+# Retry settings
+RETRY_ENABLED = True
+RETRY_TIMES = 2
+
+# Close spider after timeout
+CLOSESPIDER_TIMEOUT = 90  # Close spider after 90 seconds regardless
 
 # Disable cookies (enabled by default)
 COOKIES_ENABLED = True

@@ -43,14 +43,15 @@ coverage.xml
 *.cover
 
 # Logs
-logs/
 *.log
 
-# Data directories
-lake/
-output/
-*.db
-*.db-journal
+# Data directories (consolidated under data/)
+data/db/*.db
+data/db/*.db-journal
+data/lake/*
+data/output/*
+data/logs/*
+!data/**/.gitkeep
 
 # Scrapy
 .scrapy/

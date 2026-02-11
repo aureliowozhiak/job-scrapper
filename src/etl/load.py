@@ -1,5 +1,6 @@
 """Load module for inserting scraped job data into SQLite database."""
 from datetime import datetime, timezone
+from typing import Optional
 import sqlite3
 import json
 import os
@@ -17,7 +18,7 @@ output_directory = str(settings.output_path)
 
 def get_current_json_directory():
     """Get current date's JSON directory."""
-    now_=datetime.now()
+    now_=datetime.now(timezone.utc)
     current_year = now_.year
     current_month = now_.month
     current_day = now_.day
@@ -127,14 +128,35 @@ def get_sync_status():
         "json_directory": json_dir
     }
 
-def run_load_process():
-    """Execute the load process."""
-    json_directory = get_current_json_directory()
+def run_load_process(output_dir: Optional[str] = None):
+    """Execute the load process.
+    
+    CRITICAL: This now expects a CONSOLIDATED validated file from the validation step.
+    It will ONLY load from validated_jobs_*.json files to avoid re-processing duplicates.
+    
+    Args:
+        output_dir: Specific directory to load files from (if None, uses today's date directory)
+    """
+    if output_dir:
+        json_directory = output_dir
+    else:
+        json_directory = get_current_json_directory()
+    
     logger.info(f"Starting load process for {json_directory}")
     
     if not os.path.exists(json_directory):
         logger.warning(f"Directory '{json_directory}' not found.")
-        return {"error": "Directory not found", "inserted": 0, "duplicates": 0, "errors": 0}
+        return {
+            "error": "Directory not found",
+            "processed": 0,
+            "inserted": 0,
+            "duplicates": 0,
+            "errors": 0,
+            "pre_rejected": 0,
+            "db_before": 0,
+            "db_after": 0,
+            "db_new_jobs": 0
+        }
         
     connection = get_db_connection()
     cursor = connection.cursor()
@@ -142,78 +164,77 @@ def run_load_process():
     try:
         setup_database(cursor)
         
-        # Load JSON files
-        json_data_list = []
-        try:
-            json_files = os.listdir(json_directory)
-            for json_filename in json_files:
-                if not json_filename.endswith(".json"):
-                    continue
-                    
-                filepath = os.path.join(json_directory, json_filename)
-                try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        if isinstance(data, list):
-                            json_data_list.append(data)
-                except Exception as e:
-                    logger.error(f"Error reading {json_filename}: {e}")
-        except FileNotFoundError:
-            return {"error": "Directory not found during read", "inserted": 0}
-            
-        # Flatten jobs
+        # ONLY load from validated_jobs_*.json files (consolidated, deduplicated files from validation step)
+        json_files = sorted(Path(json_directory).glob("validated_jobs_*.json"))
+        
+        if not json_files:
+            logger.warning("No validated_jobs_*.json files found. Did you run validation step first?")
+            return {
+                "error": "No validated files found",
+                "processed": 0,
+                "inserted": 0,
+                "duplicates": 0,
+                "errors": 0,
+                "pre_rejected": 0,
+                "db_before": 0,
+                "db_after": 0,
+                "db_new_jobs": 0
+            }
+        
+        # Use the most recent validated file
+        latest_validated_file = json_files[-1]
+        logger.info(f"Loading from validated file: {latest_validated_file.name}")
+        
+        # Load jobs from consolidated file
         all_jobs = []
-        for json_data in json_data_list:
-            for data_entry in json_data:
-                if isinstance(data_entry, list):
-                    all_jobs.extend(data_entry)
-                else:
-                    all_jobs.append(data_entry) # Start handling direct lists of jobs too
+        try:
+            with open(latest_validated_file, "r", encoding="utf-8") as f:
+                all_jobs = json.load(f)
+                
+            if not isinstance(all_jobs, list):
+                logger.error(f"Invalid format in {latest_validated_file.name}: Expected list")
+                return {"error": "Invalid file format", "processed": 0, "inserted": 0}
+                
+            logger.info(f"Loaded {len(all_jobs)} jobs from validated file")
+        except Exception as e:
+            logger.error(f"Error reading validated file: {e}")
+            return {"error": f"File read error: {e}", "processed": 0, "inserted": 0}
                     
-        # Pre-validation
-        jobs_to_process = all_jobs
-        pre_validation_rejected = 0
+        # Get existing links for duplicate checking
+        cursor.execute("SELECT link FROM positions")
+        result = cursor.fetchall()
+        existing_links = {row[0] for row in (result or [])}
+        db_count_before = len(existing_links)
+        logger.info(f"Found {db_count_before} existing jobs in database")
         
-        if len(all_jobs) > 0:
-            try:
-                from src.etl.validate import validate_json_jobs
-                
-                sample_size = min(len(all_jobs), PRE_VALIDATION_SAMPLE_SIZE)
-                sample = all_jobs[:sample_size]
-                remaining = all_jobs[sample_size:]
-                
-                valid, stats = validate_json_jobs(sample)
-                jobs_to_process = valid + remaining
-                pre_validation_rejected = stats['rejected']
-                logger.info(f"Pre-validation: {stats['valid']} valid, {stats['rejected']} rejected")
-            except ImportError:
-                 logger.warning("Could not import validation module, skipping pre-validation")
-            except Exception as e:
-                logger.warning(f"Pre-validation failed: {e}")
-        
-        # Insert
+        # Insert (jobs are already deduplicated from validation step)
         stats = {
-            "processed": 0,
+            "processed": len(all_jobs),  # Total jobs examined from validated file
             "inserted": 0,
             "duplicates": 0,
             "errors": 0,
-            "pre_rejected": pre_validation_rejected
+            "db_before": db_count_before
         }
         
-        for position in jobs_to_process:
-            stats["processed"] += 1
+        for position in all_jobs:
             try:
-                # Handle nested lists if any remained
-                if isinstance(position, list):
-                     continue 
-                     
-                title = position.get("title", "").strip()
-                link = str(position.get("link", "")).strip()
+                # Normalize field names
+                title = position.get("title") or position.get("job_title", "")
+                title = title.strip() if title else ""
+                
                 company = position.get("company", "").strip()
                 source = position.get("source", "unknown").strip()
                 
-                if not title or not link or not company or link == "N/A":
+                link = position.get("link") or position.get("url", "")
+                link = link.strip() if link else ""
+                
+                if not title or not company or not link:
                     stats["errors"] += 1
+                    continue
+                
+                # Check if already in database
+                if link in existing_links:
+                    stats["duplicates"] += 1
                     continue
                     
                 now = datetime.now(timezone.utc)
@@ -224,6 +245,7 @@ def run_load_process():
                         (title, link, company, source, now, now)
                     )
                     stats["inserted"] += 1
+                    existing_links.add(link)  # Track newly inserted
                 except sqlite3.IntegrityError:
                     stats["duplicates"] += 1
                     
@@ -233,8 +255,25 @@ def run_load_process():
                 
         connection.commit()
         
-        logger.info(f"Load complete. Stats: {stats}")
-        return stats
+        # Add final database count
+        cursor.execute("SELECT COUNT(*) FROM positions")
+        result = cursor.fetchone()
+        stats["db_after"] = result[0] if result else db_count_before
+        stats["db_new_jobs"] = stats["db_after"] - db_count_before
+        
+        logger.info(f"Load complete. Processed: {stats['processed']}, Inserted: {stats['inserted']}, Duplicates: {stats['duplicates']}")
+        logger.info(f"Database: {db_count_before} → {stats['db_after']} (+{stats['db_new_jobs']} new)")
+        
+        return {
+            "processed": stats["processed"],
+            "inserted": stats["inserted"],
+            "duplicates": stats["duplicates"],
+            "errors": stats["errors"],
+            "pre_rejected": 0,
+            "db_before": stats["db_before"],
+            "db_after": stats["db_after"],
+            "db_new_jobs": stats["db_new_jobs"]
+        }
         
     finally:
         connection.close()

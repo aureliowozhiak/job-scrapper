@@ -1,10 +1,11 @@
 """Admin and control routes for managing scraping jobs."""
-from fastapi import APIRouter, HTTPException
-from typing import Optional, Dict, Any
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List, Optional, Dict, Any
 from src.jobs.manager import job_manager
 from src.schemas.status import JobStatusResponse, PipelineResponse, QueueStatusResponse
+from src.core.permissions import require_admin
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 
 
 @router.post("/scrape", response_model=JobStatusResponse)
@@ -69,7 +70,14 @@ async def trigger_sync_check():
 
 @router.post("/pipeline", response_model=PipelineResponse)
 async def trigger_pipeline(params: Optional[Dict[str, Any]] = None):
-    """Trigger full pipeline (scrape -> load -> validate) with optional filters."""
+    """Trigger full pipeline (scrape -> validate -> load -> cleanup).
+    
+    Pipeline flow:
+    1. Scraper: Scrapes jobs and saves to JSON files
+    2. Validator: Validates scraped JSON files
+    3. Loader: Loads validated data to database
+    4. Cleanup: Removes processed JSON files
+    """
     try:
         query = params.get("query") if params else None
         region = params.get("region") if params else None
@@ -79,7 +87,7 @@ async def trigger_pipeline(params: Optional[Dict[str, Any]] = None):
         return PipelineResponse(
             job_ids=job_ids,
             message=f"Pipeline enqueued (query: {query or 'default'})",
-            steps=["scraper", "loader", "validator"]
+            steps=["scraper", "validator", "loader", "cleanup"]
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to enqueue pipeline: {str(e)}")
@@ -97,6 +105,20 @@ async def get_queue_status():
     """Get overall queue status."""
     status = job_manager.get_all_job_statuses()
     return QueueStatusResponse(**status)
+
+
+@router.get("/pipelines")
+async def get_pipeline_groups():
+    """Get task groups (pipelines) for Task Manager dashboard.
+    
+    Returns only pipeline groups, not individual standalone tasks.
+    Each pipeline contains scrape, validate, load, and cleanup tasks with aggregated stats.
+    """
+    try:
+        pipelines = job_manager.get_pipeline_groups()
+        return {"pipelines": pipelines, "total": len(pipelines)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get pipelines: {str(e)}")
 
 
 @router.delete("/job/{job_id}")

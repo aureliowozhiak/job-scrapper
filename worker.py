@@ -15,13 +15,16 @@ def main():
     """Start RQ worker."""
     print(f"🔧 Starting RQ Worker")
     print(f"🔴 Redis: {settings.redis_url}")
+    print(f"⏱️  Job timeout: {settings.job_timeout}s")
     
     redis_conn = Redis.from_url(settings.redis_url)
     
     with Connection(redis_conn):
-        worker = Worker(['default'], connection=redis_conn)
-        print("✅ Worker started. Listening for jobs...")
-        worker.work()
+        # Process pipeline queue first (higher priority), then default queue
+        # This ensures pipeline tasks execute sequentially within each group
+        worker = Worker(['pipeline', 'default'], connection=redis_conn, job_monitoring_interval=30)
+        print("✅ Worker started. Listening for jobs on queues: pipeline (priority), default")
+        worker.work(with_scheduler=False, logging_level='INFO')
 
 
 if __name__ == "__main__":

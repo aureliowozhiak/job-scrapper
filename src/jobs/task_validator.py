@@ -7,14 +7,21 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 
-def task_validator():
-    """Execute link validation and cleanup."""
-    from src.etl.validate import cleanup_invalid_jobs
+def task_validator(output_dir=None):
+    """Validate scraped JSON files before loading to database.
     
-    stats = cleanup_invalid_jobs(batch_size=50)
+    This is Step 2 of the pipeline: Scrape → Validate → Load
+    
+    Args:
+        output_dir: Directory containing this pipeline run's scraped files
+    """
+    from src.etl.validate import validate_scraped_files
+    
+    # Validate with structure checks only (no link validation for speed)
+    stats = validate_scraped_files(output_dir=output_dir, skip_link_validation=True)
     
     return {
         "status": "completed",
-        "message": f"Validation finished: {stats['removed']} invalid jobs removed",
+        "message": f"Validation finished: {stats['valid_jobs']}/{stats['total_jobs']} valid jobs",
         "stats": stats
     }

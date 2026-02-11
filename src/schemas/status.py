@@ -24,6 +24,11 @@ class JobStatusResponse(BaseModel):
     finished_at: Optional[datetime] = None
     duration: Optional[float] = None
     result: Optional[Dict[str, Any]] = None
+    # Enriched metrics
+    job_type: Optional[str] = None
+    jobs_processed: Optional[int] = None
+    success_rate: Optional[float] = None
+    detailed_stats: Optional[Dict[str, Any]] = None
 
 
 class ComponentStatus(BaseModel):
