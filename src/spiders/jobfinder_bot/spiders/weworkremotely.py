@@ -1,145 +1,156 @@
 """Spider for scraping job listings from WeWorkRemotely."""
 import scrapy
-from scrapy_playwright.page import PageMethod
+from scrapy.http import HtmlResponse
+import httpx
 
 
 class WeWorkRemotelySpider(scrapy.Spider):
-    """Spider for WeWorkRemotely job board with Playwright support.
+    """Spider for WeWorkRemotely job board.
     
-    Uses scrapy-playwright to bypass Cloudflare protection and render JavaScript.
+    Uses httpx async client for HTTP calls to avoid Scrapy fingerprinting
+    and enable concurrent requests, then parses with Scrapy selectors.
     """
     
     name = "weworkremotely_jobs"
     allowed_domains = ["weworkremotely.com"]
     
     custom_settings = {
-        'DOWNLOAD_DELAY': 3,
-        'CONCURRENT_REQUESTS_PER_DOMAIN': 1,
-        'RETRY_TIMES': 2,
-        'HTTPERROR_ALLOW_ALL': True,
-        'DOWNLOAD_HANDLERS': {
-            'https': 'scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler',
-            'http': 'scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler',
-        },
-        'PLAYWRIGHT_BROWSER_TYPE': 'chromium',
-        'PLAYWRIGHT_LAUNCH_OPTIONS': {
-            'headless': True,
-            'timeout': 30000,
-            'args': [
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage',
-                '--no-sandbox',
-                '--disable-gpu',
-            ]
-        },
-        'PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT': 30000,
-        'PLAYWRIGHT_ABORT_REQUEST': lambda req: req.resource_type in ['image', 'media', 'font'],
+        'DOWNLOAD_DELAY': 1,
+        'CONCURRENT_REQUESTS_PER_DOMAIN': 3,
+        'RETRY_TIMES': 3,
+    }
+    
+    # Default headers to mimic browser
+    DEFAULT_HEADERS = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
     }
 
-    def start_requests(self):
-        """Generate initial requests with search query and filters using Playwright."""
+    async def start(self):
+        """Generate initial requests with search query and filters (async)."""
         search_term = getattr(self, "query", "data+engineer")
         region = getattr(self, "region", None)
         category = getattr(self, "category", None)
         
+        # URL encode spaces as + for search term
+        search_term = search_term.replace(" ", "+")
         url = f"https://weworkremotely.com/remote-jobs/search?term={search_term}"
         
         if region:
             url += f"&region[]={region}"
         if category:
             url += f"&category[]={category}"
-            
-        yield scrapy.Request(
-            url=url, 
-            callback=self.parse,
-            meta={
-                'playwright': True,
-                'playwright_include_page': True,
-                'playwright_context_kwargs': {
-                    'user_agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
-                    'viewport': {'width': 1920, 'height': 1080},
-                    'locale': 'en-US',
-                },
-                'playwright_page_goto_kwargs': {
-                    'wait_until': 'domcontentloaded',
-                    'timeout': 30000,
-                },
-                'playwright_page_methods': [
-                    # Wait for page to render and Cloudflare check
-                    PageMethod('wait_for_timeout', 3000),
-                ]
-            },
-            errback=self.errback,
-            dont_filter=True
-        )
-
-    async def parse(self, response):
-        """Parse job listings from search results rendered by Playwright."""
-        self.logger.info(f"Parse called with status: {response.status}")
         
-        # Close Playwright page after content is loaded
-        page = response.meta.get('playwright_page')
-        if page:
+        self.logger.info(f"Starting async request to: {url}")
+        
+        # Use httpx async client to fetch the page
+        async with httpx.AsyncClient(headers=self.DEFAULT_HEADERS, timeout=30.0) as client:
             try:
-                await page.close()
+                resp = await client.get(url)
+                self.logger.info(f"Response status: {resp.status_code}, length: {len(resp.text)}")
+                
+                if resp.status_code == 200:
+                    # Create a Scrapy response from httpx response
+                    response = HtmlResponse(
+                        url=url,
+                        body=resp.text.encode('utf-8'),
+                        encoding='utf-8'
+                    )
+                    for item in self.parse(response):
+                        yield item
+                else:
+                    self.logger.error(f"Request failed with status {resp.status_code}")
+            except httpx.TimeoutException as e:
+                self.logger.error(f"Request timed out: {e}")
+            except httpx.HTTPError as e:
+                self.logger.error(f"HTTP error: {e}")
             except Exception as e:
-                self.logger.debug(f"Page already closed or context destroyed: {e}")
+                self.logger.error(f"Request failed: {e}")
+
+    def parse(self, response):
+        """Parse job listings from search results."""
+        self.logger.info(f"Parse called, response length: {len(response.body)}")
         
-        if response.status != 200:
-            self.logger.error(f"Unexpected status code: {response.status}")
+        # Check for Cloudflare block
+        if 'Just a moment' in response.text or 'Checking your browser' in response.text:
+            self.logger.warning("Cloudflare challenge detected - cannot proceed without JavaScript")
             return
         
-        # Extract job listings
+        # Try multiple selectors for job listings (site structure may vary)
         job_listings = response.css('.new-listing-container')
+        
+        if not job_listings:
+            job_listings = response.css('section.jobs article')
+        
+        if not job_listings:
+            job_listings = response.css('.jobs-container article')
+        
+        if not job_listings:
+            job_listings = response.css('li.feature')
+            
         self.logger.info(f"Found {len(job_listings)} job listings")
         
         if not job_listings:
-            self.logger.warning("No job listings found. Page structure may have changed or Cloudflare is blocking.")
-            # Debug: print sample of HTML
+            self.logger.warning("No job listings found. Page structure may have changed.")
             self.logger.warning(f"Response body length: {len(response.body)}")
+            self.logger.debug(f"Response preview: {response.text[:500]}")
             return
         
         for job in job_listings:
-            try:
-                # Extract basic info from listing card
-                title = job.css('.new-listing__header__title::text').get()
-                company = job.css('.new-listing__company-name::text').get()
-                location = job.css('.new-listing__company-headquarters::text').get()
-                
-                # Get job URL - the main listing link
-                job_url = job.css('a.listing-link--unlocked::attr(href)').get() or \
-                         job.css('a.listing-link::attr(href)').get()
-                
-                if title and company and job_url:
-                    full_url = response.urljoin(job_url)
-                    
-                    # Extract salary/location info from categories
-                    categories = job.css('.new-listing__categories__category::text').getall()
-                    # First category is usually employment type, second is location
-                    employment_type = categories[0].strip() if len(categories) > 0 else None
-                    
-                    yield {
-                        "job_title": title.strip() if title else "N/A",
-                        "company": company.strip() if company else "N/A",
-                        "post_date": None,  # WeWorkRemotely doesn't show dates in search
-                        "location": location.strip() if location else "N/A",
-                        "salary": employment_type,  # Store employment type in salary field
-                        "qualifications": [],
-                        "url": full_url
-                    }
-            except Exception as e:
-                self.logger.warning(f"Error parsing job listing: {e}")
-                continue
-        
-        # Note: WeWorkRemotely search doesn't have traditional pagination
-        # All results appear on one page
+            item = self._parse_job(job, response)
+            if item:
+                yield item
     
-    async def errback(self, failure):
-        """Handle request errors."""
-        page = failure.request.meta.get('playwright_page')
-        if page:
-            try:
-                await page.close()
-            except Exception as e:
-                self.logger.debug(f"Page already closed or context destroyed: {e}")
-        self.logger.error(f"Request failed: {failure}")
+    def _parse_job(self, job, response):
+        """Extract job data from a single listing element."""
+        try:
+            # Try multiple selectors for each field
+            title = (
+                job.css('.new-listing__header__title::text').get() or
+                job.css('.title::text').get() or
+                job.css('h2::text').get() or
+                job.css('span.title::text').get()
+            )
+            
+            company = (
+                job.css('.new-listing__company-name::text').get() or
+                job.css('.company::text').get() or
+                job.css('span.company::text').get()
+            )
+            
+            location = (
+                job.css('.new-listing__company-headquarters::text').get() or
+                job.css('.region::text').get() or
+                job.css('span.region::text').get()
+            )
+            
+            # Get job URL
+            job_url = (
+                job.css('a.listing-link--unlocked::attr(href)').get() or
+                job.css('a.listing-link::attr(href)').get() or
+                job.css('a::attr(href)').get()
+            )
+            
+            if title and company and job_url:
+                full_url = response.urljoin(job_url)
+                
+                # Extract additional info
+                categories = job.css('.new-listing__categories__category::text').getall()
+                employment_type = categories[0].strip() if len(categories) > 0 else None
+                
+                return {
+                    "job_title": title.strip() if title else "N/A",
+                    "company": company.strip() if company else "N/A",
+                    "post_date": None,
+                    "location": location.strip() if location else "N/A",
+                    "salary": employment_type,
+                    "qualifications": [],
+                    "url": full_url
+                }
+        except Exception as e:
+            self.logger.warning(f"Error parsing job listing: {e}")
+        return None

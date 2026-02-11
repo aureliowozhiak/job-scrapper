@@ -71,14 +71,14 @@ def test_trigger_sync_check(mock_manager, authenticated_client):
 @patch('src.api.routes.admin.job_manager')
 def test_trigger_pipeline(mock_manager, authenticated_client):
     """Test triggering full pipeline."""
-    mock_manager.enqueue_pipeline.return_value = ["scraper-123", "loader-123", "validator-123"]
+    mock_manager.enqueue_pipeline.return_value = ["scraper-123", "validator-123", "loader-123", "cleanup-123"]
     
     response = authenticated_client.post("/api/admin/pipeline")
     
     assert response.status_code == 200
     data = response.json()
-    assert len(data["job_ids"]) == 3
-    assert data["steps"] == ["scraper", "loader", "validator"]
+    assert len(data["job_ids"]) == 4
+    assert data["steps"] == ["scraper", "validator", "loader", "cleanup"]
 
 
 @patch('src.api.routes.admin.job_manager')

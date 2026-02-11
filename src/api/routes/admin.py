@@ -70,9 +70,13 @@ async def trigger_sync_check():
 
 @router.post("/pipeline", response_model=PipelineResponse)
 async def trigger_pipeline(params: Optional[Dict[str, Any]] = None):
-    """Trigger full pipeline (scrape -> validate) with optional filters.
+    """Trigger full pipeline (scrape -> validate -> load -> cleanup).
     
-    Note: Scraper now loads data directly to database, so loader step is integrated.
+    Pipeline flow:
+    1. Scraper: Scrapes jobs and saves to JSON files
+    2. Validator: Validates scraped JSON files
+    3. Loader: Loads validated data to database
+    4. Cleanup: Removes processed JSON files
     """
     try:
         query = params.get("query") if params else None
@@ -83,7 +87,7 @@ async def trigger_pipeline(params: Optional[Dict[str, Any]] = None):
         return PipelineResponse(
             job_ids=job_ids,
             message=f"Pipeline enqueued (query: {query or 'default'})",
-            steps=["scraper", "validator"]
+            steps=["scraper", "validator", "loader", "cleanup"]
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to enqueue pipeline: {str(e)}")

@@ -1,5 +1,83 @@
 # Changelog - Sherlock Jobs
 
+## 🚀 Versão 3.3 - Filtros Compostos para Análise de Palavras (Fevereiro 2026)
+
+### 🆕 Adicionado
+- ✅ **Filtros Compostos na Análise de Frequência de Palavras**
+  - Novo parâmetro `ngram_type`: filtre por palavras únicas (1), frases de 2 palavras (2), 3 palavras (3) ou todos
+  - Novo parâmetro `source`: filtre por fonte de jobs (ex: "RemoteOK", "SkipTheDrive")
+  - Novos parâmetros `date_from` e `date_to`: filtre por intervalo de datas (formato ISO: YYYY-MM-DD)
+  - Todos os filtros funcionam juntos (filtragem composta)
+- ✅ **Interface de Filtros no Dashboard**
+  - Painel de controle responsivo com 4 filtros + botão "Limpar Filtros"
+  - Dropdown de fonte auto-populado com dados reais de jobs
+  - Seletores de data HTML5 (calendário integrado)
+  - Atualização automática ao mudar qualquer filtro
+- ✅ **Documentação Completa**: `docs/WORD_FREQUENCY_FILTERS.md`
+  - Exemplos de uso da API para todos os tipos de filtro
+  - Documentação do comportamento da interface
+  - Considerações de performance e melhorias futuras
+
+### 🔬 Testes
+- ✅ **4 Novos Casos de Teste** em `tests/unit/test_word_frequency.py`:
+  - `test_word_frequency_with_ngram_filter`: Testa filtro por tipo de n-grama
+  - `test_word_frequency_with_source_filter`: Testa filtro por fonte
+  - `test_word_frequency_with_date_filter`: Testa filtro por data
+  - `test_word_frequency_with_compound_filters`: Testa múltiplos filtros juntos
+
+### 📊 Exemplos de Uso
+```bash
+# Palavras únicas do RemoteOK após 10 de fevereiro
+GET /api/jobs/analysis/word-frequency?source=RemoteOK&date_from=2026-02-10&ngram_type=1
+
+# Frases de 2 palavras em intervalo de datas
+GET /api/jobs/analysis/word-frequency?date_from=2026-02-09&date_to=2026-02-11&ngram_type=2
+
+# Todos os n-gramas do SkipTheDrive
+GET /api/jobs/analysis/word-frequency?source=SkipTheDrive&top_n=15
+```
+
+### 🎯 Benefícios
+- Análise aprofundada de tendências por fonte de jobs
+- Comparação temporal de linguagem do mercado de trabalho
+- Consultas flexíveis combinando múltiplos critérios
+- Interface limpa e intuitiva para filtros
+- Otimização de performance: filtros reduzem conjunto de dados antes do processamento
+
+## 🔄 Versão 3.2 - Correções de Interface (Fevereiro 2026)
+
+### 🐛 Correções
+- ✅ **Paginação de Jobs**: Implementada lógica de janela deslizante para navegação em grandes conjuntos
+  - Corrigido problema onde página 14 de 75 mostrava todos os botões 1-14
+  - Agora exibe janela contextual: `1 ... 12 13 [14] 15 16 ... 75`
+  - Sempre mostra primeira e última página com reticências dinâmicas
+  - Melhor tratamento de limites para páginas próximas ao início/fim
+- ✅ **Estatísticas de Carregamento**: Campo `processed` agora conta apenas jobs novos
+  - Antes: mostrava todos os jobs validados incluindo duplicatas (ex: 1583)
+  - Agora: conta apenas jobs que não estão no banco (ex: 4)
+  - Comportamento esperado: `processed ≈ inserted` (quando não há erros)
+- ✅ **Verificação de Banco de Dados**: Confirmado sem duplicatas (746 entradas únicas)
+
+### 🆕 Adicionado
+- ✅ **Script de Deduplicação**: `scripts/deduplicate_db.py`
+  - Ferramenta de limpeza manual para remover duplicatas do banco
+  - Mantém entrada mais antiga (primeiro `created_at`) por link único
+  - Log detalhado de remoções e verificação de integridade
+
+## 🔄 Versão 3.1 - Melhorias de Clareza (Fevereiro 2026)
+
+### 🐛 Correções
+- ✅ **Estatísticas de Carregamento Aprimoradas** - Relatórios de tarefas de carga agora mostram estatísticas claras:
+  - `total_found`: Total de jobs encontrados em arquivos JSON
+  - `unique_in_batch`: Jobs únicos após deduplicação dentro do lote
+  - `batch_duplicates`: Duplicatas encontradas dentro do mesmo lote
+  - `db_duplicates`: Jobs já existentes no banco de dados
+  - `inserted`: Novos jobs realmente inseridos
+  - `total_skipped`: Total de jobs ignorados (batch + db duplicates)
+  - `summary`: Resumo legível explicando o resultado
+- ✅ Logging melhorado para rastreamento de deduplicação
+- ✅ Formato de retorno consistente em todos os caminhos de erro
+
 ## 🚀 Versão 3.0 - Modernização Completa (Fevereiro 2026)
 
 ### 🎯 Reestruturação Arquitetural Completa

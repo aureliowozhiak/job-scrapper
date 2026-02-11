@@ -13,6 +13,8 @@ def task_loader(output_dir=None):
     
     This is Step 3 of the pipeline: Scrape → Validate → Load
     
+    After successful load, cleans up old scraper JSON files (keeping only validated_jobs_*.json)
+    
     Args:
         output_dir: Directory containing this pipeline run's validated files
     """
@@ -22,18 +24,26 @@ def task_loader(output_dir=None):
     logger = get_logger(__name__)
     stats = run_load_process(output_dir=output_dir)
     
-    # Clean up processed files after successful load (only if files were processed and no errors)
+    # Clean up old scraper files after successful load (keep validated files for audit)
     if output_dir and stats.get("processed", 0) > 0 and Path(output_dir).exists():
         try:
-            # Only clean up if it's a unique run directory (has timestamp subdirectory structure)
             output_path = Path(output_dir)
-            # Check if it's a timestamped directory (HHMMSS format - 6 digits)
-            if output_path.name.isdigit() and len(output_path.name) == 6:
-                logger.info(f"🧹 Cleaning up processed files from {output_dir}")
-                shutil.rmtree(output_dir)
-                logger.info(f"✅ Cleanup complete")
+            
+            # Remove old scraper files (skipthedrive_*, remoteok_*, etc.)
+            # But keep validated_jobs_*.json for audit trail
+            scraped_files = [
+                f for f in output_path.glob("*.json") 
+                if not f.name.startswith("validated_jobs_")
+            ]
+            
+            if scraped_files:
+                logger.info(f"🧹 Cleaning up {len(scraped_files)} old scraper files from {output_dir}")
+                for file in scraped_files:
+                    file.unlink()
+                logger.info(f"✅ Cleanup complete (kept validated files for audit)")
             else:
-                logger.info(f"⏭️  Skipping cleanup (not a timestamped run directory)")
+                logger.info(f"⏭️  No old scraper files to clean up")
+                
         except Exception as e:
             logger.warning(f"Failed to clean up {output_dir}: {e}")
     

@@ -268,6 +268,7 @@ class JobManager:
         elif job_type == "validator":
             total_jobs = stats.get("total_jobs", 0)
             valid_jobs = stats.get("valid_jobs", 0)
+            duplicates_removed = stats.get("duplicates_removed", 0)
             
             enriched["jobs_processed"] = total_jobs
             enriched["success_rate"] = round((valid_jobs / total_jobs * 100), 2) if total_jobs > 0 else 0
@@ -277,7 +278,19 @@ class JobManager:
                 "total_jobs": total_jobs,
                 "valid_jobs": valid_jobs,
                 "invalid_jobs": stats.get("invalid_jobs", 0),
+                "duplicates_removed": duplicates_removed,
                 "errors": stats.get("errors", [])
+            }
+        
+        elif job_type == "cleanup":
+            files_removed = stats.get("files_removed", 0)
+            
+            enriched["jobs_processed"] = files_removed
+            enriched["success_rate"] = 100.0 if files_removed > 0 else 0.0
+            enriched["detailed_stats"] = {
+                "files_removed": files_removed,
+                "status": stats.get("status", "unknown"),
+                "message": stats.get("message", "")
             }
         
         return enriched
@@ -400,7 +413,13 @@ class JobManager:
             "total_inserted": 0,
             "total_duplicates": 0,
             "db_before": 0,
-            "db_after": 0
+            "db_after": 0,
+            # Validator stats
+            "valid_jobs": 0,
+            "invalid_jobs": 0,
+            "duplicates_removed": 0,
+            # Cleanup stats
+            "files_removed": 0
         })
         
         for job_id in all_job_ids:
@@ -464,12 +483,22 @@ class JobManager:
             # Aggregate stats from individual tasks
             detailed_stats = job_status.get("detailed_stats", {})
             if step == "scrape":
-                pipeline_groups[pipeline_id]["total_jobs_processed"] += detailed_stats.get("jobs_scraped", 0)
+                # Only set (not add) the jobs_scraped count
+                pipeline_groups[pipeline_id]["total_jobs_processed"] = detailed_stats.get("jobs_scraped", 0)
+            elif step == "validate":
+                # Set validator stats
+                pipeline_groups[pipeline_id]["valid_jobs"] = detailed_stats.get("valid_jobs", 0)
+                pipeline_groups[pipeline_id]["invalid_jobs"] = detailed_stats.get("invalid_jobs", 0)
+                pipeline_groups[pipeline_id]["duplicates_removed"] = detailed_stats.get("duplicates_removed", 0)
             elif step == "load":
-                pipeline_groups[pipeline_id]["total_inserted"] += detailed_stats.get("inserted", 0)
-                pipeline_groups[pipeline_id]["total_duplicates"] += detailed_stats.get("duplicates", 0)
+                # Only set (not add) the load stats - use correct keys from load task
+                pipeline_groups[pipeline_id]["total_inserted"] = detailed_stats.get("inserted", 0)
+                pipeline_groups[pipeline_id]["total_duplicates"] = detailed_stats.get("duplicates", 0)
                 pipeline_groups[pipeline_id]["db_before"] = detailed_stats.get("db_before", 0)
                 pipeline_groups[pipeline_id]["db_after"] = detailed_stats.get("db_after", 0)
+            elif step == "cleanup":
+                # Set cleanup stats
+                pipeline_groups[pipeline_id]["files_removed"] = detailed_stats.get("files_removed", 0)
         
         # Convert to list and sort by pipeline_id (descending, most recent first)
         result = []
@@ -505,6 +534,12 @@ class JobManager:
                 "total_duplicates": group_data["total_duplicates"],
                 "db_before": group_data["db_before"],
                 "db_after": group_data["db_after"],
+                # Validator stats
+                "valid_jobs": group_data["valid_jobs"],
+                "invalid_jobs": group_data["invalid_jobs"],
+                "duplicates_removed": group_data["duplicates_removed"],
+                # Cleanup stats
+                "files_removed": group_data["files_removed"],
                 "progress_percent": round(progress_percent, 1),
                 "completed_steps": f"{completed_main_tasks}/{len(main_tasks)}"
             })

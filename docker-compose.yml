@@ -25,6 +25,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - PYTHONPATH=/app
       - REDIS_HOST=redis
       - DATABASE_URL=sqlite:///./data/db/jobs.db
       - DEBUG=false
@@ -54,6 +55,7 @@ services:
     container_name: sherlock-jobs-worker
     command: python worker.py
     environment:
+      - PYTHONPATH=/app
       - REDIS_HOST=redis
       - DATABASE_URL=sqlite:///./data/db/jobs.db
     volumes:

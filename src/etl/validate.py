@@ -195,6 +195,11 @@ def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = 
     
     This is Step 2 of the pipeline: Scrape → Validate → Load
     
+    CRITICAL: This function now deduplicates jobs BEFORE loading by:
+    1. Collecting all jobs from all JSON files
+    2. Deduplicating based on link (URL)
+    3. Writing deduplicated jobs back to a single consolidated file
+    
     Args:
         output_dir: Directory containing scraped JSON files. If None, uses today's output directory.
         skip_link_validation: If True, only validates structure (faster). If False, also validates links (slower).
@@ -205,7 +210,7 @@ def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = 
     from src.core.config import settings
     
     logger.info("=" * 60)
-    logger.info(f"STARTING VALIDATION (skip_link_validation={skip_link_validation})")
+    logger.info(f"STARTING VALIDATION WITH DEDUPLICATION (skip_link_validation={skip_link_validation})")
     logger.info("=" * 60)
     
     # Determine output directory
@@ -223,6 +228,7 @@ def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = 
             "total_jobs": 0,
             "valid_jobs": 0,
             "invalid_jobs": 0,
+            "duplicates_removed": 0,
             "errors": []
         }
     
@@ -239,11 +245,13 @@ def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = 
             "total_jobs": 0,
             "valid_jobs": 0,
             "invalid_jobs": 0,
+            "duplicates_removed": 0,
             "errors": []
         }
     
-    total_jobs = 0
-    valid_jobs_count = 0
+    # PHASE 1: Collect and validate all jobs
+    all_jobs = []
+    total_jobs_raw = 0
     invalid_jobs_count = 0
     files_validated = 0
     errors = []
@@ -258,16 +266,12 @@ def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = 
                 continue
             
             file_total = len(jobs)
-            total_jobs += file_total
-            
-            # Basic structure validation
-            file_valid = 0
-            file_invalid = 0
+            total_jobs_raw += file_total
             
             for job in jobs:
                 # Required fields check
                 if not isinstance(job, dict):
-                    file_invalid += 1
+                    invalid_jobs_count += 1
                     continue
                 
                 # Support both field naming conventions
@@ -280,24 +284,21 @@ def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = 
                 link = link.strip() if link else ""
                 
                 if not title or not company or not link or link == "N/A":
-                    file_invalid += 1
+                    invalid_jobs_count += 1
                     continue
                 
                 # Optional link validation (slower)
                 if not skip_link_validation:
                     is_valid, status_code = validate_link(link)
                     if not is_valid:
-                        file_invalid += 1
+                        invalid_jobs_count += 1
                         logger.debug(f"Invalid link in {json_file.name}: {link} (HTTP {status_code})")
                         continue
                 
-                file_valid += 1
+                # Add to collection for deduplication
+                all_jobs.append(job)
             
-            valid_jobs_count += file_valid
-            invalid_jobs_count += file_invalid
             files_validated += 1
-            
-            logger.info(f"✅ {json_file.name}: {file_valid}/{file_total} valid jobs")
             
         except json.JSONDecodeError as e:
             logger.error(f"❌ {json_file.name}: Invalid JSON - {e}")
@@ -306,17 +307,57 @@ def validate_scraped_files(output_dir: str = None, skip_link_validation: bool = 
             logger.error(f"❌ {json_file.name}: {e}")
             errors.append({"file": str(json_file), "error": str(e)})
     
+    # PHASE 2: Deduplicate based on link
+    unique_jobs = {}
+    duplicates_removed = 0
+    
+    for job in all_jobs:
+        link = job.get("link") or job.get("url", "")
+        link = link.strip() if link else ""
+        
+        if link not in unique_jobs:
+            unique_jobs[link] = job
+        else:
+            duplicates_removed += 1
+    
+    valid_jobs_list = list(unique_jobs.values())
+    valid_jobs_count = len(valid_jobs_list)
+    
+    logger.info(f"📊 Deduplication: {len(all_jobs)} valid jobs → {valid_jobs_count} unique ({duplicates_removed} duplicates removed)")
+    
+    # PHASE 3: Write deduplicated jobs to consolidated file
+    consolidated_file = output_dir / f"validated_jobs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+    try:
+        with open(consolidated_file, 'w', encoding='utf-8') as f:
+            json.dump(valid_jobs_list, f, indent=2, ensure_ascii=False)
+        logger.info(f"✅ Wrote {valid_jobs_count} deduplicated jobs to {consolidated_file.name}")
+    except Exception as e:
+        logger.error(f"Failed to write consolidated file: {e}")
+        errors.append({"file": str(consolidated_file), "error": str(e)})
+    
     stats = {
         "files_found": len(json_files),
         "files_validated": files_validated,
-        "total_jobs": total_jobs,
+        "total_jobs": total_jobs_raw,
         "valid_jobs": valid_jobs_count,
         "invalid_jobs": invalid_jobs_count,
+        "duplicates_removed": duplicates_removed,
+        "breakdown": {
+            "total_raw": total_jobs_raw,
+            "invalid_structure": invalid_jobs_count,
+            "valid_unique": valid_jobs_count,
+            "duplicates": duplicates_removed
+        },
+        "consolidated_file": str(consolidated_file),
         "errors": errors
     }
     
     logger.info("=" * 60)
-    logger.info(f"VALIDATION COMPLETE: {valid_jobs_count}/{total_jobs} valid jobs from {files_validated} files")
+    logger.info(f"VALIDATION COMPLETE:")
+    logger.info(f"  📥 Raw jobs from files: {total_jobs_raw}")
+    logger.info(f"  ❌ Invalid/incomplete: {invalid_jobs_count}")
+    logger.info(f"  🔄 Duplicates removed: {duplicates_removed}")
+    logger.info(f"  ✅ Unique valid jobs: {valid_jobs_count}")
     logger.info("=" * 60)
     
     return stats

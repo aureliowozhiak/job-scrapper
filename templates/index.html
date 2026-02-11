@@ -680,12 +680,14 @@
                 <button class="tab-btn active" onclick="switchTab('dashboard')">
                     <i class="fas fa-th-list"></i> Job Feed
                 </button>
-                <button class="tab-btn" onclick="switchTab('tasks')" id="tab-btn-tasks" {% if not is_admin %}disabled title="Admin login required"{% endif %}>
+                {% if is_admin %}
+                <button class="tab-btn" onclick="switchTab('tasks')" id="tab-btn-tasks">
                     <i class="fas fa-microchip"></i> Task Manager
                 </button>
-                <button class="tab-btn" onclick="switchTab('health')" id="tab-btn-health" {% if not is_admin %}disabled title="Admin login required"{% endif %}>
+                <button class="tab-btn" onclick="switchTab('health')" id="tab-btn-health">
                     <i class="fas fa-heartbeat"></i> Health Monitor
                 </button>
+                {% endif %}
             </div>
         </div>
         <!-- No search tab button here -->
@@ -773,6 +775,42 @@
                     <button onclick="loadWordStatistics()" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
+                </div>
+                
+                <!-- Filter Controls -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border);">
+                    <div>
+                        <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">N-gram Type</label>
+                        <select id="wordFilterNgram" onchange="loadWordStatistics()" style="width: 100%; padding: 8px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                            <option value="all">All Types</option>
+                            <option value="1">Single Words Only</option>
+                            <option value="2">2-Word Phrases Only</option>
+                            <option value="3">3-Word Phrases Only</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">Source</label>
+                        <select id="wordFilterSource" onchange="loadWordStatistics()" style="width: 100%; padding: 8px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                            <option value="">All Sources</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">Date From</label>
+                        <input type="date" id="wordFilterDateFrom" onchange="loadWordStatistics()" style="width: 100%; padding: 8px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">Date To</label>
+                        <input type="date" id="wordFilterDateTo" onchange="loadWordStatistics()" style="width: 100%; padding: 8px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                    </div>
+                    
+                    <div style="display: flex; align-items: flex-end;">
+                        <button onclick="clearWordFilters()" class="btn" style="width: 100%; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-size: 12px;">
+                            <i class="fas fa-times"></i> Clear Filters
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="word-stats-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
@@ -1202,6 +1240,15 @@
                     total_jobs_processed: pipeline.total_jobs_processed || 0,
                     total_inserted: pipeline.total_inserted || 0,
                     total_duplicates: pipeline.total_duplicates || 0,
+                    // Validator stats from backend
+                    valid_jobs: pipeline.valid_jobs || 0,
+                    invalid_jobs: pipeline.invalid_jobs || 0,
+                    duplicates_removed: pipeline.duplicates_removed || 0,
+                    // Cleanup stats from backend
+                    files_removed: pipeline.files_removed || 0,
+                    // DB stats
+                    db_before: pipeline.db_before || 0,
+                    db_after: pipeline.db_after || 0,
                     progress_percent: progressPercent
                 };
             });
@@ -1209,6 +1256,19 @@
             // Cache metadata for individual tasks
             pipelines.forEach(pipeline => {
                 pipeline.tasks.forEach(task => {
+                    // Calculate jobs_processed based on task type
+                    let jobsProcessed = 0;
+                    const stats = task.detailed_stats || {};
+                    if (task.step === 'scrape') {
+                        jobsProcessed = stats.jobs_scraped || 0;
+                    } else if (task.step === 'validate') {
+                        jobsProcessed = stats.total_jobs || 0;
+                    } else if (task.step === 'load') {
+                        jobsProcessed = stats.processed || 0;
+                    } else if (task.step === 'cleanup') {
+                        jobsProcessed = stats.files_removed || 0;
+                    }
+                    
                     tasksMetadata[task.job_id] = {
                         id: task.job_id,
                         status: task.status,
@@ -1216,9 +1276,9 @@
                         ended_at: task.ended_at,
                         duration: task.duration,
                         job_type: task.step,
-                        detailed_stats: task.detailed_stats || {},
-                        jobs_processed: task.detailed_stats?.processed || task.detailed_stats?.jobs_scraped || task.detailed_stats?.total_jobs || 0,
-                        success_rate: task.detailed_stats?.success_rate || 100
+                        detailed_stats: stats,
+                        jobs_processed: jobsProcessed,
+                        success_rate: stats.success_rate || 100
                     };
                 });
             });
@@ -1396,50 +1456,50 @@
                         durationStr = '---';
                     }
                     
-                    // Aggregate metrics from subtasks
-                    let totalProcessed = 0;
-                    let totalSuccess = 0;
-                    let hasMetrics = false;
-                    let tasksWithJobs = 0;
+                    // Use pipeline-level aggregated stats from backend (not summing individual tasks)
+                    const totalProcessed = task.total_jobs_processed || 0;
+                    const hasMetrics = totalProcessed > 0;
                     
-                    // Detailed aggregated statistics
+                    // Detailed aggregated statistics from pipeline group
+                    // Use backend-aggregated values directly, fall back to task metadata for detailed stats
                     const pipelineStats = {
-                        scraper: { jobs_scraped: 0, queries_processed: 0, spiders: {} },
-                        validator: { total_jobs: 0, valid_jobs: 0, invalid_jobs: 0, files_validated: 0 },
-                        loader: { processed: 0, inserted: 0, duplicates: 0, errors: 0, db_before: 0, db_after: 0 }
+                        scraper: { jobs_scraped: task.total_jobs_processed || 0, queries_processed: 0, spiders: {} },
+                        validator: { 
+                            total_jobs: 0, 
+                            valid_jobs: task.valid_jobs || 0, 
+                            invalid_jobs: task.invalid_jobs || 0, 
+                            duplicates_removed: task.duplicates_removed || 0, 
+                            files_validated: 0 
+                        },
+                        loader: { 
+                            processed: 0, 
+                            inserted: task.total_inserted || 0, 
+                            duplicates: task.total_duplicates || 0, 
+                            errors: 0, 
+                            db_before: task.db_before || 0, 
+                            db_after: task.db_after || 0 
+                        },
+                        cleanup: {
+                            files_removed: task.files_removed || 0
+                        }
                     };
                     
+                    // Collect additional detailed stats from individual tasks (for spiders, queries, etc.)
                     task.tasks.forEach(t => {
                         const job = tasksMetadata[t.id] || {};
-                        if (job.jobs_processed && job.jobs_processed > 0) {
-                            totalProcessed += job.jobs_processed;
-                            hasMetrics = true;
-                            tasksWithJobs++;
-                            
-                            // Add to weighted success calculation
-                            if (job.success_rate !== null && job.success_rate !== undefined) {
-                                totalSuccess += (job.success_rate / 100) * job.jobs_processed;
-                            }
-                        }
                         
-                        // Collect detailed stats by task type
                         if (job.detailed_stats) {
-                            if (t.id.includes('scraper') || t.id.includes('scrape')) {
-                                pipelineStats.scraper.jobs_scraped = job.detailed_stats.jobs_scraped || 0;
+                            if (t.step === 'scrape') {
+                                // Only get detailed scraper info not available at pipeline level
                                 pipelineStats.scraper.queries_processed = job.detailed_stats.queries_processed || 0;
                                 pipelineStats.scraper.spiders = job.detailed_stats.spiders || {};
-                            } else if (t.id.includes('validator') || t.id.includes('validate')) {
+                            } else if (t.step === 'validate') {
+                                // Get total_jobs and files_validated from task details
                                 pipelineStats.validator.total_jobs = job.detailed_stats.total_jobs || 0;
-                                pipelineStats.validator.valid_jobs = job.detailed_stats.valid_jobs || 0;
-                                pipelineStats.validator.invalid_jobs = job.detailed_stats.invalid_jobs || 0;
                                 pipelineStats.validator.files_validated = job.detailed_stats.files_validated || 0;
-                            } else if (t.id.includes('loader') || t.id.includes('load')) {
+                            } else if (t.step === 'load') {
                                 pipelineStats.loader.processed = job.detailed_stats.processed || 0;
-                                pipelineStats.loader.inserted = job.detailed_stats.inserted || 0;
-                                pipelineStats.loader.duplicates = job.detailed_stats.duplicates || 0;
                                 pipelineStats.loader.errors = job.detailed_stats.errors || 0;
-                                pipelineStats.loader.db_before = job.detailed_stats.db_before || 0;
-                                pipelineStats.loader.db_after = job.detailed_stats.db_after || 0;
                             }
                         }
                     });
@@ -1450,12 +1510,12 @@
                         const job = tasksMetadata[t.id] || {};
                         return job.status === 'finished';
                     }).length;
-                    const progressPercent = mainTasks.length > 0 
-                        ? ((completedMainTasks / mainTasks.length) * 100).toFixed(1)
-                        : 0;
                     
-                    // Calculate weighted average success rate (only for tasks that processed jobs)
-                    const avgSuccessRate = hasMetrics && totalProcessed > 0 ? ((totalSuccess / totalProcessed) * 100).toFixed(1) : null;
+                    // Use backend-calculated progress if available, otherwise calculate
+                    const progressPercent = task.progress_percent !== undefined 
+                        ? task.progress_percent 
+                        : (mainTasks.length > 0 ? ((completedMainTasks / mainTasks.length) * 100).toFixed(1) : 0);
+                    
                     
                     // Generate pipeline summary tooltip
                     const spiderCount = Object.keys(pipelineStats.scraper.spiders).length;
@@ -1463,8 +1523,8 @@
                     const dbAfter = pipelineStats.loader.db_after || (dbBefore + pipelineStats.loader.inserted);
                     const pipelineSummary = `
 Scraped: ${pipelineStats.scraper.jobs_scraped} jobs from ${spiderCount} sources (${pipelineStats.scraper.queries_processed} queries)
-Validated: ${pipelineStats.validator.valid_jobs}/${pipelineStats.validator.total_jobs} passed validation
-Loaded: ${pipelineStats.loader.inserted} new jobs added (${pipelineStats.loader.duplicates} were already in DB)
+Validated: ${pipelineStats.validator.valid_jobs} unique jobs (${pipelineStats.validator.duplicates_removed} duplicates removed, ${pipelineStats.validator.invalid_jobs} invalid)
+Loaded: ${pipelineStats.loader.inserted} new jobs added to database (${pipelineStats.loader.duplicates} already existed)
 Database: ${dbBefore} → ${dbAfter} total jobs
                     `.trim();
                     
@@ -1694,14 +1754,18 @@ Database: ${dbBefore} → ${dbAfter} total jobs
                                     </div>
                                 </td>
                                 <td>
-                                    ${successRate !== null ? `
+                                    ${subtask.state === 'running' || subtask.state === 'queued' || subtask.state === 'started' ? `
+                                        <span style="color: var(--text-muted); font-size: 10px;">
+                                            <i class="fas ${subtask.state === 'running' ? 'fa-spinner fa-spin' : 'fa-hourglass-half'}"></i>
+                                        </span>
+                                    ` : (successRate !== null ? `
                                         <div style="display: flex; align-items: center; gap: 6px;">
                                             <div style="flex: 1; background: rgba(255,255,255,0.05); border-radius: 10px; height: 5px; overflow: hidden;">
                                                 <div style="width: ${successRate}%; height: 100%; background: ${successRate > 80 ? '#10b981' : successRate > 50 ? '#f59e0b' : '#ff5252'}; border-radius: 10px;"></div>
                                             </div>
                                             <span style="font-size: 10px; color: ${successRate > 80 ? '#10b981' : successRate > 50 ? '#f59e0b' : '#ff5252'}; font-weight: 600; min-width: 35px;">${successRate}%</span>
                                         </div>
-                                    ` : '<span style="color: var(--text-muted); font-size: 10px;">---</span>'}
+                                    ` : '<span style="color: var(--text-muted); font-size: 10px;">---</span>')}
                                 </td>
                                 <td style="text-align:right;">
                                     ${subtask.state === 'failed' ?
@@ -2093,7 +2157,7 @@ Database: ${dbBefore} → ${dbAfter} total jobs
             detailsHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">`;
             detailsHtml += `<div><strong>Total Scraped:</strong> ${stats.scraper.jobs_scraped.toLocaleString()} jobs</div>`;
             detailsHtml += `<div><strong>Queries:</strong> ${stats.scraper.queries_processed} processed</div>`;
-            detailsHtml += `<div><strong>Valid Jobs:</strong> ${stats.validator.valid_jobs.toLocaleString()}/${stats.validator.total_jobs.toLocaleString()}</div>`;
+            detailsHtml += `<div><strong>Unique Valid:</strong> ${stats.validator.valid_jobs.toLocaleString()} (${stats.validator.duplicates_removed} dupes removed)</div>`;
             detailsHtml += `<div><strong>Files Validated:</strong> ${stats.validator.files_validated}</div>`;
             const dbBefore = stats.loader.db_before || 0;
             const dbAfter = stats.loader.db_after || (dbBefore + stats.loader.inserted);
@@ -2130,16 +2194,19 @@ Database: ${dbBefore} → ${dbAfter} total jobs
             if (stats.validator.total_jobs > 0) {
                 const validPercent = ((stats.validator.valid_jobs / stats.validator.total_jobs) * 100).toFixed(1);
                 const invalidPercent = ((stats.validator.invalid_jobs / stats.validator.total_jobs) * 100).toFixed(1);
+                const dupePercent = ((stats.validator.duplicates_removed / stats.validator.total_jobs) * 100).toFixed(1);
                 
                 detailsHtml += `<div style="background: rgba(251,191,36,0.08); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #fbbf24;">`;
                 detailsHtml += `<h4 style="color: #fbbf24; margin-bottom: 10px; font-size: 14px;">✅ Validation Results</h4>`;
                 detailsHtml += `<div style="margin-bottom: 10px;">`;
                 detailsHtml += `<div style="display: flex; gap: 5px; height: 20px; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.05);">`;
-                detailsHtml += `<div style="flex: ${validPercent}; background: #10b981;" title="${stats.validator.valid_jobs} valid (${validPercent}%)"></div>`;
+                detailsHtml += `<div style="flex: ${validPercent}; background: #10b981;" title="${stats.validator.valid_jobs} unique valid (${validPercent}%)"></div>`;
+                detailsHtml += `<div style="flex: ${dupePercent}; background: #fbbf24;" title="${stats.validator.duplicates_removed} duplicates (${dupePercent}%)"></div>`;
                 detailsHtml += `<div style="flex: ${invalidPercent}; background: #ff5252;" title="${stats.validator.invalid_jobs} invalid (${invalidPercent}%)"></div>`;
                 detailsHtml += `</div></div>`;
-                detailsHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">`;
+                detailsHtml += `<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 11px;">`;
                 detailsHtml += `<div><span style="color: #10b981;">●</span> Valid: ${stats.validator.valid_jobs} (${validPercent}%)</div>`;
+                detailsHtml += `<div><span style="color: #fbbf24;">●</span> Duplicates: ${stats.validator.duplicates_removed} (${dupePercent}%)</div>`;
                 detailsHtml += `<div><span style="color: #ff5252;">●</span> Invalid: ${stats.validator.invalid_jobs} (${invalidPercent}%)</div>`;
                 detailsHtml += `</div></div>`;
             }
@@ -2286,12 +2353,13 @@ Database: ${dbBefore} → ${dbAfter} total jobs
         async function loadAllJobs() {
             try {
                 // Load all jobs to match word frequency analysis
-                const response = await fetch('/api/jobs/?limit=1000');
+                const response = await fetch('/api/jobs/?limit=10000');
                 const data = await response.json();
                 allJobs = data.jobs;
                 filteredJobs = allJobs;
                 document.getElementById('browse-total').textContent = allJobs.length;
                 renderBrowse();
+                await populateSourceFilter();
                 loadWordStatistics();
             } catch (e) {
                 document.getElementById('browseList').innerHTML = '<div class="alert-error">Erro ao carregar dados.</div>';
@@ -2310,11 +2378,68 @@ Database: ${dbBefore} → ${dbAfter} total jobs
 
         async function loadWordStatistics() {
             try {
-                const response = await fetch('/api/jobs/analysis/word-frequency?top_n=15');
+                // Build query parameters from filters
+                const params = new URLSearchParams({ top_n: 15 });
+                
+                const ngramType = document.getElementById('wordFilterNgram')?.value;
+                if (ngramType && ngramType !== 'all') {
+                    params.append('ngram_type', ngramType);
+                }
+                
+                const source = document.getElementById('wordFilterSource')?.value;
+                if (source) {
+                    params.append('source', source);
+                }
+                
+                const dateFrom = document.getElementById('wordFilterDateFrom')?.value;
+                if (dateFrom) {
+                    params.append('date_from', dateFrom);
+                }
+                
+                const dateTo = document.getElementById('wordFilterDateTo')?.value;
+                if (dateTo) {
+                    params.append('date_to', dateTo);
+                }
+                
+                const response = await fetch(`/api/jobs/analysis/word-frequency?${params.toString()}`);
                 const data = await response.json();
                 renderWordStatistics(data);
             } catch (e) {
+                console.error('Error loading word statistics:', e);
                 document.getElementById('word-stats-container').innerHTML = '<div style="text-align:center; padding:40px; color:#ff5252;">Error loading statistics</div>';
+            }
+        }
+
+        function clearWordFilters() {
+            document.getElementById('wordFilterNgram').value = 'all';
+            document.getElementById('wordFilterSource').value = '';
+            document.getElementById('wordFilterDateFrom').value = '';
+            document.getElementById('wordFilterDateTo').value = '';
+            loadWordStatistics();
+        }
+
+        async function populateSourceFilter() {
+            try {
+                const response = await fetch('/api/jobs/stats');
+                const stats = await response.json();
+                
+                // Fetch unique sources from jobs
+                const jobsResponse = await fetch('/api/jobs/?limit=10000');
+                const jobsData = await jobsResponse.json();
+                
+                const uniqueSources = [...new Set(jobsData.jobs.map(j => j.source).filter(s => s))].sort();
+                
+                const sourceSelect = document.getElementById('wordFilterSource');
+                sourceSelect.innerHTML = '<option value="">All Sources</option>';
+                
+                uniqueSources.forEach(source => {
+                    const option = document.createElement('option');
+                    option.value = source;
+                    option.textContent = source;
+                    sourceSelect.appendChild(option);
+                });
+            } catch (e) {
+                console.error('Error populating source filter:', e);
             }
         }
 
@@ -2494,33 +2619,46 @@ Database: ${dbBefore} → ${dbAfter} total jobs
             // Previous
             btns += `<button class="page-btn" onclick="currentPage--; renderBrowse()" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
 
-            // Fixed Window Pagination Logic (Single Ellipsis)
-            const maxButtons = 6; // Buttons in the main window
+            // Sliding window pagination with ellipsis
+            const maxButtons = 7; // Max page numbers to show (not counting first/last/ellipsis)
 
-            if (totalPages <= 8) {
-                // Show all if few pages
+            if (totalPages <= 10) {
+                // Show all pages if few enough
                 for (let i = 1; i <= totalPages; i++) {
                     btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
                 }
             } else {
-                // Decide which side to collapse (Single Ellipsis)
-                if (currentPage < totalPages / 2) {
-                    // Start window
-                    const end = Math.max(maxButtons, currentPage + 1);
-                    for (let i = 1; i <= end; i++) {
-                        btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
-                    }
-                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
-                    btns += `<button class="page-btn" onclick="currentPage=${totalPages}; renderBrowse()">${totalPages}</button>`;
-                } else {
-                    // End window
-                    btns += `<button class="page-btn" onclick="currentPage=1; renderBrowse()">1</button>`;
-                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
-                    const start = Math.min(totalPages - maxButtons + 1, currentPage - 1);
-                    for (let i = start; i <= totalPages; i++) {
-                        btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
-                    }
+                // Always show first page
+                btns += `<button class="page-btn ${1 === currentPage ? 'active' : ''}" onclick="currentPage=1; renderBrowse()">1</button>`;
+                
+                // Calculate sliding window around current page
+                let start = Math.max(2, currentPage - 2);
+                let end = Math.min(totalPages - 1, currentPage + 2);
+                
+                // Adjust window if near boundaries
+                if (currentPage <= 4) {
+                    end = Math.min(totalPages - 1, 6);
+                } else if (currentPage >= totalPages - 3) {
+                    start = Math.max(2, totalPages - 5);
                 }
+                
+                // Left ellipsis
+                if (start > 2) {
+                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
+                }
+                
+                // Sliding window
+                for (let i = start; i <= end; i++) {
+                    btns += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="currentPage=${i}; renderBrowse()">${i}</button>`;
+                }
+                
+                // Right ellipsis
+                if (end < totalPages - 1) {
+                    btns += `<span style="padding: 8px 12px; color: var(--text-muted);">...</span>`;
+                }
+                
+                // Always show last page
+                btns += `<button class="page-btn ${totalPages === currentPage ? 'active' : ''}" onclick="currentPage=${totalPages}; renderBrowse()">${totalPages}</button>`;
             }
 
 
