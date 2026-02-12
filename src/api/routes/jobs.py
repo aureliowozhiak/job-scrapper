@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from collections import Counter
 import re
+from fastapi_cache.decorator import cache
 from src.database.connection import get_db
 from src.database.repositories import PositionRepository
 from src.database.models import Position
-from src.schemas.job import Job, JobList, JobStats, WordFrequencyResponse, WordFrequencyItem
+from src.schemas.job import Job, JobList, JobStats, WordFrequencyResponse, WordFrequencyItem, TitleMetricsResponse, NgramUniquenessItem
 
 router = APIRouter()
 
@@ -26,6 +27,7 @@ async def search_jobs(
 
 
 @router.get("/", response_model=JobList)
+@cache(expire=300)
 async def list_jobs(
     search: Optional[str] = None,
     company: Optional[str] = None,
@@ -68,8 +70,8 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
     
     return Job.model_validate(position)
 
-
 @router.get("/analysis/word-frequency", response_model=WordFrequencyResponse)
+@cache(expire=600)
 async def get_word_frequency(
     top_n: int = Query(20, ge=5, le=100, description="Number of top words to return"),
     min_length: int = Query(3, ge=2, le=10, description="Minimum word length"),
@@ -205,4 +207,127 @@ async def get_word_frequency(
             WordFrequencyItem(text=phrase, count=count) 
             for phrase, count in sorted(three_word_phrases.items(), key=lambda x: x[1], reverse=True)[:top_n]
         ]
+    )
+
+@router.get("/analysis/title-metrics", response_model=TitleMetricsResponse)
+@router.get("/analysis/title-metrics", response_model=TitleMetricsResponse)
+@cache(expire=600)
+async def get_title_metrics(
+    source: Optional[str] = Query(None, description="Filter by job source"),
+    date_from: Optional[str] = Query(None, description="Start date (ISO format: YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date (ISO format: YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """Analyze job title token metrics and n-gram uniqueness.
+    
+    Computes:
+    1. Maximum token length across all titles
+    2. Smallest k where all (k+1)-grams appear exactly once (uniqueness threshold)
+    3. N-gram breakdown showing uniqueness statistics for each level checked
+    
+    The min_unique_ngram_k metric tells you the minimum phrase length needed
+    for titles to become distinguishable (all unique).
+    
+    Example: If min_unique_ngram_k=2, it means all 3-grams in titles are unique,
+    so any 3-word phrase uniquely identifies a title.
+    """
+    from datetime import datetime as dt
+    
+    # Build query with filters
+    query = db.query(Position)
+    
+    if source:
+        query = query.filter(Position.source.ilike(f"%{source}%"))
+    
+    if date_from:
+        try:
+            date_from_obj = dt.fromisoformat(date_from.replace('Z', '+00:00'))
+            query = query.filter(Position.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to_obj = dt.fromisoformat(date_to.replace('Z', '+00:00'))
+            query = query.filter(Position.created_at <= date_to_obj)
+        except ValueError:
+            pass
+    
+    positions = query.all()
+    
+    if not positions:
+        return TitleMetricsResponse(
+            max_token_length=0,
+            title_with_max_tokens="",
+            min_unique_ngram_k=0,
+            ngram_breakdown={},
+            total_titles_analyzed=0
+        )
+    
+    # Extract and tokenize all titles
+    all_titles_tokens = []
+    for pos in positions:
+        title = pos.title.lower()
+        # Split by delimiters and extract words (consistent with word-frequency logic)
+        segments = re.split(r'[,;:()\[\]{}|/\-–—]+', title)
+        words = []
+        for segment in segments:
+            words.extend(re.findall(r'\b[a-z0-9-]+\b', segment.strip()))
+        
+        if words:  # Only include titles with at least one token
+            all_titles_tokens.append((pos.title, words))
+    
+    # Find max token length
+    max_token_length = max(len(words) for _, words in all_titles_tokens)
+    title_with_max_tokens = next(
+        title for title, words in all_titles_tokens if len(words) == max_token_length
+    )
+    
+    # Find smallest k where all (k+1)-grams are unique
+    ngram_breakdown = {}
+    k = 1
+    min_unique_ngram_k = None
+    
+    # Iterate until we find k where all (k+1)-grams are unique
+    # or we reach the maximum possible k
+    while k <= max_token_length - 1:
+        # Extract all (k+1)-grams from all titles
+        ngram_counter = Counter()
+        
+        for _, words in all_titles_tokens:
+            # Generate (k+1)-grams from this title
+            for i in range(len(words) - k):
+                ngram = ' '.join(words[i:i+k+1])
+                ngram_counter[ngram] += 1
+        
+        # Calculate uniqueness statistics
+        total_ngrams = len(ngram_counter)
+        unique_ngrams = sum(1 for count in ngram_counter.values() if count == 1)
+        uniqueness_ratio = unique_ngrams / total_ngrams if total_ngrams > 0 else 0.0
+        
+        ngram_breakdown[str(k+1)] = NgramUniquenessItem(
+            total_ngrams=total_ngrams,
+            unique_ngrams=unique_ngrams,
+            uniqueness_ratio=uniqueness_ratio
+        )
+        
+        # Check if all (k+1)-grams are unique (all counts are 1)
+        max_count = max(ngram_counter.values()) if ngram_counter else 0
+        if max_count == 1:
+            # All (k+1)-grams appear exactly once - found our answer!
+            min_unique_ngram_k = k
+            break
+        
+        k += 1
+    
+    # If we never found k where all are unique, set to max possible
+    if min_unique_ngram_k is None:
+        min_unique_ngram_k = max_token_length - 1
+    
+    return TitleMetricsResponse(
+        max_token_length=max_token_length,
+        title_with_max_tokens=title_with_max_tokens,
+        min_unique_ngram_k=min_unique_ngram_k,
+        ngram_breakdown=ngram_breakdown,
+        total_titles_analyzed=len(all_titles_tokens)
     )

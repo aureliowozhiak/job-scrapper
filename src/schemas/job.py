@@ -1,7 +1,7 @@
 """Job-related Pydantic schemas."""
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, HttpUrl, Field
+from typing import Optional, List, Dict
+from pydantic import BaseModel, Field
 
 
 class JobBase(BaseModel):
@@ -71,6 +71,22 @@ class WordFrequencyResponse(BaseModel):
     single_words: List[WordFrequencyItem]
     two_word_phrases: List[WordFrequencyItem]
     three_word_phrases: List[WordFrequencyItem]
+
+
+class NgramUniquenessItem(BaseModel):
+    """N-gram uniqueness statistics."""
+    total_ngrams: int
+    unique_ngrams: int
+    uniqueness_ratio: float
+
+
+class TitleMetricsResponse(BaseModel):
+    """Title metrics analysis response."""
+    max_token_length: int
+    title_with_max_tokens: str
+    min_unique_ngram_k: int
+    ngram_breakdown: Dict[str, NgramUniquenessItem]
+    total_titles_analyzed: int
 
 
 # Aliases for backward compatibility

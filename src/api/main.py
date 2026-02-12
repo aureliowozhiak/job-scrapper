@@ -7,6 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis import asyncio as aioredis
+
 from src.core.config import settings
 from src.core.auth import verify_credentials
 from src.database.connection import init_db
@@ -25,9 +29,15 @@ async def lifespan(app: FastAPI):
     init_db()
     print("✅ Database initialized")
     
+    # Initialize cache
+    redis = aioredis.from_url(settings.redis_url, encoding="utf8", decode_responses=True)
+    FastAPICache.init(RedisBackend(redis), prefix="jobfeed-cache")
+    print("✅ Cache initialized (Redis)")
+    
     yield
     
     # Shutdown
+    await FastAPICache.clear()
     print("👋 Shutting down...")
 
 
